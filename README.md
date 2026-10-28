@@ -15,14 +15,14 @@ Breath of the Abyss — my own unfinished Godot 4 top-down RPG, tested on a pinn
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 echo "<your Meta API key>" > ~/.meta-api-key && chmod 600 ~/.meta-api-key   # or set META_API_KEY
-.venv/bin/python -m src.run   # 60-move session, writes runs/<timestamp>/
+.venv/bin/python src/run.py   # 60-move session, writes runs/<timestamp>/
 ```
 Open `viewer/index.html` in a browser to browse sessions and bug reports (regenerate it with `.venv/bin/python src/viewer_build.py build`; open it from the repository root so the relative links work).
 
 On macOS, grant the terminal Screen Recording and Accessibility permission (needed to capture the game window and send keys).
 
 ## Status
-Working pieces, each with a self-check: `src/report.py selftest`, `src/notes.py selftest`, `src/viewer_build.py selftest`, `src/capture.py` (saves a screenshot). `src/perceive.py` (SAM), `src/decide.py` (Spark tool calls) and `src/act.py` (key presses) are written, and `src/run.py` chains them into a session loop (log, captures, `summary.md`, `playtest_notes.md`). Its self-check passes on fake input; a full 60-move run on the real game is not verified yet (key injection into the Godot window is still being debugged).
+Working pieces, each with a self-check: `src/report.py selftest`, `src/notes.py selftest`, `src/viewer_build.py selftest`, `src/run.py selftest`, `src/capture.py` (saves a screenshot). `src/perceive.py` (SAM), `src/decide.py` (Spark tool calls) and `src/act.py` (key presses) are chained by `src/run.py` into a session loop (log, captures, `summary.md`, `playtest_notes.md`). A full 60-move run on the real game has completed inside a Windows VM (so the agent does not take over the developer's own screen); more runs and bug reports are in progress.
 
 ## Demo video
 _Coming soon._

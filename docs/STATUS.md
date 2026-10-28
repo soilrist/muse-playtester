@@ -5,9 +5,9 @@
 > **"지금 상태" 는 일지가 아니라 현황판** — 15줄 이내, 덧붙이지 말고 바뀐 줄만 고쳐 쓴다 (25줄을 넘으면 루프 커밋이 거절된다). 한 일은 아래 바퀴 기록에. 감독이 직접 한 일도 `## #감독 · 날짜 · 요지` 덩어리로 아래에.
 
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
-- 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-02 SAM 10장 완료(go), D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
+- 마일스톤: D6-02 README 완료(#38), D1 골격 3/3 완료, D2-02 SAM 10장 완료(go), D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: D5-01 60수 세션 1회(VM) — 예산 때문에 🔴 질문 중(#37 INBOX). 답 전에는 D3-01·D2-01 jev 재확인이나 D6-02 README. SAM 은 go(#36 9/10), 단 NPC 도 "player character" 로 셈
+- 다음 조각: D5-01 60수 세션 1회(VM) — 예산 때문에 🔴 질문 중(#37 INBOX). 답 전에는 D3-01·D2-01 jev 재확인(남은 `[ ]` 는 이것뿐). SAM 은 go(#36 9/10), 단 NPC 도 "player character" 로 셈
 - 막힌 것: 없음 — 실측은 이제 Windows VM 안에서 `tools/vm/run_in_vm.sh` 로(사람 화면에 안 보임, #28). snapshot 이 바뀌면 `tools/vm/bootstrap.ps1` 재실행 필요
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 1개(API 예산 상한 증액, INBOX #37) / 🟡 가정 0개 / 안 채운 숫자 0개
@@ -15,6 +15,16 @@
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #38 · 2026-10-29 · D6-02 README 실행 명령 교정
+- 계획: D6-02 · INBOX 처리 줄 없음, ROADMAP `[ ]` 중 D2-01·D3-01 은 jev 미확인으로 뒤로, D5-xx 는 예산 🔴 대기 → 남은 D6-02 · 쓴 것: README.md
+- 한 것: README How to run 의 `.venv/bin/python -m src.run` 이 `ModuleNotFoundError: No module named 'capture'` 로 실패하는 것을 직접 확인(src 는 패키지가 아님, #28 과 같은 이유) → `.venv/bin/python src/run.py` 로 교정. Status 절의 "키 주입 디버깅 중" 은 낡아서 VM 60수 완주(#28)·`run.py selftest` 반영으로 고침
+- 커밋: 이 커밋
+- 검사: 1층 `python3 tools/check_conventions.py` → 결과: 통과 (오류 0 / 경고 0 / 미정 숫자 0) / 2층 `.venv/bin/python src/run.py selftest` → `run selftest ok` (jev evidence SUPPORTED p 0.71). 첫 줄 venv 설치와 맥에서 실제 60수는 안 돌려 봄(맥 직접 실행은 사람 세이브 공유라 VM 로만) / 3층 해당 없음(문서)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 3, 11, 12, 15(게임 안 띄움·API 호출 없음)
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음(#37 예산 질문 계속 열려 있음)
+- 다음: 예산 답이 오면 D5-01. 답 전에는 D2-01·D3-01 jev 재확인뿐이라 다음 바퀴도 비슷하면 STOP 검토
 
 ## #37 · 2026-10-28 · D5-01 예산 부족 확인 → 🔴 질문, D3-01 decide 재확인
 - 계획: ROADMAP `[ ]` 중 D5-01 (D2-01·D3-01 은 jev 미확인으로 뒤로, INBOX 처리 줄 없음) · 쓴 것: 코드 변경 없음, INBOX 질문 1줄

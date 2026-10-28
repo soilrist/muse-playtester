@@ -24,7 +24,9 @@ def decide(scene_text, recent, goal, image=None):
         "You are a game playtester. Choose exactly ONE tool call as your next action.\n"
         "Rules: (1) First read any control hints printed on the screen and use exactly those keys "
         "(menus usually take arrow keys + Enter). (2) If a dialog asks to delete, erase or overwrite "
-        "(delete / overwrite / 지운다 / 삭제 / 덮어쓰기), NEVER confirm it. Any on-screen warning about erasing a save or 'press once more to proceed' means a destructive confirmation is pending: press esc to cancel it right away.\n"
+        "(delete / overwrite / 지운다 / 삭제 / 덮어쓰기), NEVER confirm it. Any on-screen warning about erasing a save or 'press once more to proceed' means a destructive confirmation is pending: press esc to cancel it right away. "
+        "(3) If an on-screen objective says to talk to, open or inspect something, walk next to it, face it, then press enter; "
+        "if the screen does not change, try space, z, e, x one at a time before walking away.\n"
         f"Goal: {goal}\nScene: {scene_text}\nRecent moves: {json.dumps(recent[-5:])}"
     )
     calls = function_calls(call_text(prompt, tools=TOOLS, image=image))

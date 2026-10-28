@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from judge import Judge, Step
+from judge import Judge, Step, frames_same
 from notes import summarize, write_notes
 from report import Bug, write_report
 
@@ -20,6 +20,9 @@ SAVE_DIR = Path.home() / "Library/Application Support/Godot/app_userdata/심연�
 SEE = ["player character", "health bar"]  # judge 규칙이 쓰는 둘만 묻는다 (SAM 상한 120 = 60수 x 2장)
 GOAL = "explore the game and look for bugs"
 BOOT_SEC = 6
+PROBE_KEYS = ["up", "down", "left", "right", "w", "s", "a", "d"]  # 반대 방향이 이웃하게 — 벽에 막힌 쪽과 열린 쪽이 표에서 갈린다
+PROBE_HOLD_MS = 300
+PROBE_SETTLE_MS = 200
 
 
 def _limit(name, default):
@@ -83,8 +86,9 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             sam += len(SEE)
             tool, args = ports["decide"](scene.summary(), moves, goal, shot)
             spark += 1
+            why = args.get("why") if tool in ("report_bug", "note") else args.pop("why", None)  # press·wait·done 의 why 는 로그 칸으로 옮긴다
             keys, entry = (), {"step": n, "t": round(clock() - t0, 1), "scene": scene.summary(), "tool": tool,
-                               "args": args, "capture": str(shot), "findings": []}
+                               "args": args, "why": why or "(no reason given)", "capture": str(shot), "findings": []}
             if tool == "press":
                 ports["press"](args["key"], args["hold_ms"])
                 keys = (args["key"],)
@@ -107,9 +111,12 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             else:
                 moves.append(f"{tool} (ignored)")
             for f in judge.check(Step(clock() - t0, shot, keys, scene)):
+                table = probe_keys(ports, run_dir, n) if f.rule == "same_screen" else []
                 bug_paths.append(_report(Bug(f"{f.rule} at step {n}", "medium", list(moves), "game keeps responding",
-                                             f.why, f"judge rule {f.rule}", f.frames, run_dir.name)))
+                                             f.why, f"judge rule {f.rule}", f.frames, run_dir.name, table)))
                 entry["findings"].append(f.rule)
+                if table:
+                    entry["probe"] = {k: changed for k, changed, _, _ in table}
             _log(run_dir, entry)
     except Exception as e:  # BudgetExceeded 포함 — 어떤 이유든 기록은 남기고 끝낸다
         reason = f"stopped: {type(e).__name__}: {e}"
@@ -123,8 +130,20 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     return reason, n
 
 
+def probe_keys(ports, run_dir, n):
+    """끼임이 걸린 자리에서 이동 후보 키를 하나씩 눌러 키마다 화면이 바뀌었는지 본다. [(키, 바뀜, 전 그림, 후 그림)]."""
+    table = []
+    for key in PROBE_KEYS:
+        before = ports["capture"](Path(run_dir) / "frames" / f"probe-{n:03d}-{key}-before.png")
+        ports["press"](key, PROBE_HOLD_MS)
+        ports["wait"](PROBE_SETTLE_MS)
+        after = ports["capture"](Path(run_dir) / "frames" / f"probe-{n:03d}-{key}-after.png")
+        table.append((key, not frames_same(before, after), str(before), str(after)))
+    return table
+
+
 def _log(run_dir, entry):
-    """수마다 한 줄: 수 번호·Scene 요약·Spark 툴 호출(이름+인자)·누른 키와 시간(args)·캡처 경로·judge 결과."""
+    """수마다 한 줄: 수 번호·Scene 요약·Spark 툴 호출(이름+인자)·Spark 이유(why)·누른 키와 시간(args)·캡처 경로·judge 결과."""
     with (Path(run_dir) / "log.jsonl").open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
@@ -159,7 +178,7 @@ def selftest():
     import report
     from perceive import Scene
     shot = ROOT / "captures" / "sample-d1-03.png"
-    script = [("press", {"key": "down", "hold_ms": 100}), ("wait", {"ms": 1}), ("done", {"reason": "enough"})]
+    script = [("press", {"key": "down", "hold_ms": 100, "why": "see door"}), ("wait", {"ms": 1, "why": "let it settle"}), ("done", {"reason": "enough", "why": "seen enough"})]
     log = []
 
     def ports(tools):
@@ -178,6 +197,7 @@ def selftest():
             rows = [json.loads(x) for x in (Path(d) / "r1" / "log.jsonl").read_text(encoding="utf-8").splitlines()]
             assert [x["step"] for x in rows] == [1, 2, 3] and rows[0]["tool"] == "press" and rows[0]["args"]["key"] == "down", rows
             assert all(Path(x["capture"]).is_file() and x["scene"] for x in rows), rows
+            assert [x["why"] for x in rows] == ["see door", "let it settle", "seen enough"] and "why" not in rows[0]["args"], rows
             r, n = run_session(ports([("wait", {"ms": 1})] * 9), Path(d) / "r2", max_actions=4)
             assert (r, n) == ("action limit", 4), (r, n)
             r, n = run_session(ports([("wait", {"ms": 1})] * 9), Path(d) / "r3", max_spark=2)
@@ -194,6 +214,28 @@ def selftest():
             text = (Path(d) / "r7" / "playtest_notes.md").read_text(encoding="utf-8")
             assert "1수째" in text and "no hint" in text, text
             assert not (Path(d) / "r1" / "playtest_notes.md").exists()
+            # same_screen 시나리오: 1수만 다른 화면, 이후 같은 화면, 시계는 호출마다 3초
+            seq = {"n": 0}
+
+            def cap(p):
+                seq["n"] += 1
+                shutil.copy2(Path(shot).with_name("priv-b0.png") if seq["n"] == 1 else shot, p)
+                return p
+            tick = {"t": 0}
+
+            def clock():
+                tick["t"] += 3
+                return tick["t"]
+            p8 = ports([("press", {"key": "down", "hold_ms": 100})] * 6)
+            p8["capture"] = lambda p: (Path(p).parent.mkdir(parents=True, exist_ok=True), cap(p))[1]
+            run_session(p8, Path(d) / "r8", max_actions=6, clock=clock)
+            rows = [json.loads(x) for x in (Path(d) / "r8" / "log.jsonl").read_text(encoding="utf-8").splitlines()]
+            hit = [x for x in rows if "same_screen" in x["findings"]]
+            assert hit and set(hit[0]["probe"]) == set(PROBE_KEYS) and not any(hit[0]["probe"].values()), rows
+            assert all(x["why"] == "(no reason given)" for x in rows), rows
+            rep = next((Path(d) / "bugs").glob("*same-screen*/report.md")).read_text(encoding="utf-8")
+            assert "## 키별 확인" in rep and "| up | 그대로 |" in rep and "| d | 그대로 |" in rep, rep
+            assert any((next((Path(d) / "bugs").glob("*same-screen*")) / "frames").glob("probe-*-up-before.png"))
             r, n = run_session(ports([]), Path(d) / "r6")  # decide 가 StopIteration → 기록 남기고 끝
             assert r.startswith("stopped:") and (Path(d) / "r6" / "summary.md").is_file(), r
         finally:

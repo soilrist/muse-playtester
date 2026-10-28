@@ -21,6 +21,7 @@ class Bug:
     why: str  # judge 규칙 또는 Spark why
     frames: list = field(default_factory=list)
     session: str = ""
+    key_table: list = field(default_factory=list)  # 키별 확인: (키, 화면이 바뀌었나, 누르기 전 그림, 누른 뒤 그림)
 
 
 def slugify(title):
@@ -54,6 +55,8 @@ def write_report(bug, bugs_dir=None):
              "## 재현 순서", *[f"{i}. {s}" for i, s in enumerate(bug.steps, 1)], "",
              "## 기대", bug.expected, "", "## 실제", bug.actual, "", "## 근거 프레임", *[f"- {r}" for r in rels], "",
              "## 판단 근거", bug.why, ""]
+    if bug.key_table:
+        lines += _key_section(bug.key_table, folder)
     (folder / "report.md").write_text("\n".join(lines), encoding="utf-8")
     index = bugs_dir / "INDEX.md"
     if not index.exists():
@@ -61,6 +64,22 @@ def write_report(bug, bugs_dir=None):
     with index.open("a", encoding="utf-8") as fh:
         fh.write(f"| {num:04d} | [{bug.title}]({folder.name}/report.md) | {bug.severity} | {bug.session or '-'} |\n")
     return folder / "report.md"
+
+
+def _key_section(table, folder):
+    """## 키별 확인 — 이동 후보 키를 하나씩 눌렀을 때 화면이 바뀌었는지 표로. 그림은 리포트 폴더로 복사한다."""
+    rows = []
+    for key, changed, before, after in table:
+        rels = []
+        for f in (before, after):
+            dst = folder / "frames" / Path(f).name
+            shutil.copy2(f, dst)
+            rels.append(f"frames/{dst.name}")
+        rows.append(f"| {key} | {'바뀜' if changed else '그대로'} | {rels[0]} | {rels[1]} |")
+    moved = [k for k, c, _, _ in table if c]
+    still = [k for k, c, _, _ in table if not c]
+    return ["## 키별 확인", "", "| 키 | 화면 | 누르기 전 | 누른 뒤 |", "|---|---|---|---|", *rows, "",
+            f"- 화면이 바뀐 키: {', '.join(moved) or '없음'}", f"- 안 바뀐 키: {', '.join(still) or '없음'}", ""]
 
 
 def selftest():
@@ -75,8 +94,14 @@ def selftest():
         for key in ("## 재현 순서", "1. down 300ms", "## 기대", "## 실제", "frames/sample-d1-03.png", "## 판단 근거", "same_screen"):
             assert key in text, key
         assert (p1.parent / "frames" / "sample-d1-03.png").exists()
+        assert "## 키별 확인" not in text
+        b.key_table = [("up", False, str(src), str(src)), ("left", True, str(src), str(ROOT / "captures" / "priv-b0.png"))]
+        t3 = write_report(b, d).read_text(encoding="utf-8")
+        for key in ("## 키별 확인", "| up | 그대로 |", "| left | 바뀜 |", "화면이 바뀐 키: left", "안 바뀐 키: up", "frames/priv-b0.png"):
+            assert key in t3, key
+        assert (p1.parent.parent / "0003-player-stuck-in-wall" / "frames" / "priv-b0.png").exists()
         rows = [l for l in (Path(d) / "INDEX.md").read_text(encoding="utf-8").splitlines() if l.startswith("| 000")]
-        assert len(rows) == 2
+        assert len(rows) == 3
         for bad in (Bug("t", "urgent", ["a"], "e", "a", "w", [str(src)]), Bug("t", "low", [], "e", "a", "w", [str(src)])):
             try:
                 write_report(bad, d)

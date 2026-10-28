@@ -3,17 +3,18 @@ import json
 
 from meta_client import call_text, function_calls
 
+WHY = {"type": "string", "description": "One short sentence: what you see on screen and why you chose this action."}
 TOOLS = [
     {"type": "function", "name": "press", "description": "Press one game key for hold_ms milliseconds.",
-     "parameters": {"type": "object", "properties": {"key": {"type": "string"}, "hold_ms": {"type": "integer"}}, "required": ["key", "hold_ms"]}},
+     "parameters": {"type": "object", "properties": {"key": {"type": "string", "description": "One of: up, down, left, right, enter, esc, space, tab, shift, or a single letter."}, "hold_ms": {"type": "integer"}, "why": WHY}, "required": ["key", "hold_ms", "why"]}},
     {"type": "function", "name": "wait", "description": "Do nothing for ms milliseconds.",
-     "parameters": {"type": "object", "properties": {"ms": {"type": "integer"}}, "required": ["ms"]}},
+     "parameters": {"type": "object", "properties": {"ms": {"type": "integer"}, "why": WHY}, "required": ["ms", "why"]}},
     {"type": "function", "name": "report_bug", "description": "Report a bug you observed.",
      "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "severity": {"type": "string", "enum": ["low", "medium", "high"]}, "why": {"type": "string"}}, "required": ["title", "severity", "why"]}},
     {"type": "function", "name": "note", "description": "Note a non-bug player impression.",
      "parameters": {"type": "object", "properties": {"kind": {"type": "string", "enum": ["ux", "fun", "balance"]}, "what": {"type": "string"}, "why": {"type": "string"}}, "required": ["kind", "what", "why"]}},
     {"type": "function", "name": "done", "description": "End the session.",
-     "parameters": {"type": "object", "properties": {"reason": {"type": "string"}}, "required": ["reason"]}},
+     "parameters": {"type": "object", "properties": {"reason": {"type": "string"}, "why": WHY}, "required": ["reason", "why"]}},
 ]
 
 

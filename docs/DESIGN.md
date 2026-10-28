@@ -49,7 +49,8 @@
 - SAM 이 실패하거나 0개면 Muse Spark 이미지 입력으로 폴백.
 ### 4.4 `decide.py` — 판단
 - `muse-spark-1.3` 툴 호출로 다음 행동 **하나**를 받는다.
-- 툴: `press(key, hold_ms)`, `wait(ms)`, `report_bug(title, severity, why)`, `done(reason)`.
+- 툴: `press(key, hold_ms)`, `wait(ms)`, `report_bug(title, severity, why)`, `note(kind, what, why)`, `done(reason)`.
+- `note` = 버그는 아니지만 플레이어로서 불편·지루·헷갈림을 느낀 순간(§4.10). `kind` ∈ `ux`(헷갈림·불친절) / `fun`(지루함·재미 부족) / `balance`(너무 어렵거나 쉬움).
 - 입력: Scene + 최근 5수 + 목표.
 ### 4.5 `act.py` — 입력
 - pynput 으로 키 입력. 게임 창을 앞으로 가져온 뒤 입력한다. **게임 내부 함수 호출 금지.**
@@ -60,6 +61,12 @@
 - report.md 필수 칸: 제목 · 심각도 · 재현 순서(입력 목록) · 기대/실제 · 근거 프레임 경로 · 판단 근거(judge 규칙 또는 Spark `why`).
 ### 4.8 `run.py` — 세션
 - `~/Applications/Godot.app/Contents/MacOS/Godot --path ~/Git\ Project/breath-of-the-abyss` 로 게임 실행(PATH 에 `godot` 없음) → 3.1 루프 → 종료 조건 → 게임 종료 → `runs/<시각>/summary.md`.
+### 4.10 플레이 소감 (`report.py` 가 씀, D5~D6)
+- 버그와 **따로** 낸다: 버그 = 객관·재현 순서, 소감 = 주관·근거 장면.
+- 플레이 중 `note` 로 모은 메모 + 세션 기록을 세션 끝에 Spark 1회로 정리 → `runs/<시각>/playtest_notes.md` 에 **개선점 최대 3개**.
+- 개선점마다 필수 칸: 무엇이 문제 · **근거 장면(몇 수째 + 캡처 경로)** · 장르 비교("같은 장르 게임은 보통 …", Spark 의 장르 상식 — 다른 게임을 실제로 돌리지 않는다) · 제안.
+- **근거 장면 없는 지적은 버린다**(코드에서 검사). "타격감 개선" 같은 뻔한 조언 금지 — 이 세션에서 실제로 겪은 일만.
+
 ### 4.9 `viewer/` — 정적 HTML (D6)
 - `runs/`·`bugs/` 를 읽어 보여주는 정적 페이지. 서버 없음.
 
@@ -80,7 +87,7 @@
 |---|---|---|---|
 | 행동 수 | 60 | `PT_MAX_ACTIONS` | 설치 지시(10-28). 3분 데모에 담기는 길이 |
 | SAM 이미지 | 120 | `PT_MAX_SAM_CALLS` | 설치 지시. 60수 × 수당 평균 2장 |
-| Spark 호출 | 80 | `PT_MAX_SPARK_CALLS` | 설치 지시. 60수 + 폴백·리포트 여유 20 |
+| Spark 호출 | 80 | `PT_MAX_SPARK_CALLS` | 설치 지시. 60수 + 폴백·리포트 여유 19 + 소감 정리 1 |
 ### 6.2 예산
 | 이름 | 값 | 환경변수 | 근거 |
 |---|---|---|---|
@@ -102,7 +109,7 @@
 
 ## 8. 출력 형식
 ### 8.1 `runs/<시각>/summary.md`
-수 수 · 종료 이유 · SAM/Spark 호출 수 · 비용 · 발견한 버그 링크.
+수 수 · 종료 이유 · SAM/Spark 호출 수 · 비용 · 발견한 버그 링크 · 플레이 소감 링크.
 ### 8.2 `bugs/INDEX.md`
 `| 번호 | 제목 | 심각도 | 세션 |` 표 한 줄씩.
 

@@ -56,7 +56,7 @@ def _log(model, kind, in_tok, out_tok, images, cost, ok):
         w.writerow([time.strftime("%Y-%m-%dT%H:%M:%S"), model, kind, in_tok, out_tok, images, f"{cost:.6f}", int(ok)])
 
 
-def call_text(prompt, model="muse-spark-1.3", timeout=60):
+def call_text(prompt, model="muse-spark-1.3", timeout=60, tools=None):
     """텍스트 입력 1회 호출. 응답 JSON 반환."""
     _check_limits(model)
     in_tok = out_tok = 0
@@ -65,7 +65,7 @@ def call_text(prompt, model="muse-spark-1.3", timeout=60):
         r = requests.post(
             ENDPOINT,
             headers={"Authorization": f"Bearer {_api_key()}", "Content-Type": "application/json"},
-            json={"model": model, "input": prompt},
+            json={"model": model, "input": prompt, **({"tools": tools, "tool_choice": "auto"} if tools else {})},
             timeout=timeout,
         )
         r.raise_for_status()
@@ -76,6 +76,12 @@ def call_text(prompt, model="muse-spark-1.3", timeout=60):
         return data
     finally:
         _log(model, "text", in_tok, out_tok, 0, in_tok * SPARK_IN_PER_TOKEN + out_tok * SPARK_OUT_PER_TOKEN, ok)
+
+
+def function_calls(data):
+    """응답에서 function_call 항목을 (name, args dict) 목록으로."""
+    import json
+    return [(i["name"], json.loads(i.get("arguments") or "{}")) for i in data.get("output", []) if i.get("type") == "function_call"]
 
 
 def output_text(data):

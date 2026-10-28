@@ -1,0 +1,33 @@
+"""판단 (DESIGN §4.4). Muse Spark 툴 호출로 다음 행동 하나를 받는다."""
+import json
+
+from meta_client import call_text, function_calls
+
+TOOLS = [
+    {"type": "function", "name": "press", "description": "Press one game key for hold_ms milliseconds.",
+     "parameters": {"type": "object", "properties": {"key": {"type": "string"}, "hold_ms": {"type": "integer"}}, "required": ["key", "hold_ms"]}},
+    {"type": "function", "name": "wait", "description": "Do nothing for ms milliseconds.",
+     "parameters": {"type": "object", "properties": {"ms": {"type": "integer"}}, "required": ["ms"]}},
+    {"type": "function", "name": "report_bug", "description": "Report a bug you observed.",
+     "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "severity": {"type": "string", "enum": ["low", "medium", "high"]}, "why": {"type": "string"}}, "required": ["title", "severity", "why"]}},
+    {"type": "function", "name": "note", "description": "Note a non-bug player impression.",
+     "parameters": {"type": "object", "properties": {"kind": {"type": "string", "enum": ["ux", "fun", "balance"]}, "what": {"type": "string"}, "why": {"type": "string"}}, "required": ["kind", "what", "why"]}},
+    {"type": "function", "name": "done", "description": "End the session.",
+     "parameters": {"type": "object", "properties": {"reason": {"type": "string"}}, "required": ["reason"]}},
+]
+
+
+def decide(scene_text, recent, goal):
+    """(tool_name, args) 하나를 반환. recent 는 최근 5수 문자열 목록."""
+    prompt = (
+        "You are a game playtester. Choose exactly ONE tool call as your next action.\n"
+        f"Goal: {goal}\nScene: {scene_text}\nRecent moves: {json.dumps(recent[-5:])}"
+    )
+    calls = function_calls(call_text(prompt, tools=TOOLS))
+    if not calls:
+        raise RuntimeError("툴 호출 없음")
+    return calls[0]
+
+
+if __name__ == "__main__":
+    print(decide("player at center, door to the north, no enemies", [], "explore the room"))

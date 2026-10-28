@@ -14,9 +14,15 @@ Built from scratch during Meta Global AI Developer Hackathon (Oct 28 – Nov 4, 
 ## How to run
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-echo "<your Meta API key>" > ~/.meta-api-key && chmod 600 ~/.meta-api-key
-.venv/bin/python -m src.run
+echo "<your Meta API key>" > ~/.meta-api-key && chmod 600 ~/.meta-api-key   # or set META_API_KEY
+.venv/bin/python -m src.run   # 60-move session (not merged yet — see Status)
 ```
+Open `viewer/index.html` in a browser to browse sessions and bug reports (regenerate it with `.venv/bin/python src/viewer_build.py build`; open it from the repository root so the relative links work).
+
+On macOS, grant the terminal Screen Recording and Accessibility permission (needed to capture the game window and send keys).
+
+## Status
+Working pieces, each with a self-check: `src/report.py selftest`, `src/notes.py selftest`, `src/viewer_build.py selftest`, `src/capture.py` (saves a screenshot). `src/perceive.py` (SAM), `src/decide.py` (Spark tool calls) and `src/act.py` (key presses) are written; the loop `src/run.py` that chains them is still in progress.
 
 ## Demo video
 _Coming soon._

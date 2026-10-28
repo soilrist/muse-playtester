@@ -5,16 +5,29 @@
 > **"지금 상태" 는 일지가 아니라 현황판** — 15줄 이내, 덧붙이지 말고 바뀐 줄만 고쳐 쓴다 (25줄을 넘으면 루프 커밋이 거절된다). 한 일은 아래 바퀴 기록에. 감독이 직접 한 일도 `## #감독 · 날짜 · 요지` 덩어리로 아래에.
 
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
-- 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
+- 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: D4-03, D2-02 SAM 10장 (bugs/0009 same_screen 오탐 여부 확인 필요)
-- 막힌 것: 없음 — 키 주입 #7 해소
+- 다음 조각: INBOX 결함 1번(키별 확인 표) 실측 확인 — same_screen 이 실제로 걸리는 10수 실측 필요 · D4-03 · D2-02 SAM 10장(player 판별 기준 보정 포함: 마을 NPC 도 "player character" 로 셈)
+- 막힌 것: 없음 — 키 주입 #7 해소. 실측 중 다른 앱(Claude·카카오톡)이 게임 창을 가리면 act.focus_game 이 세션을 끝낸다(#26 에서 3번 중 3번)
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
 - 비용: 상한 $3 안 (`logs/api_usage.csv` 42줄, 10수 Spark 10회·SAM 20장)
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #26 · 2026-10-28 · D3-03 INBOX 결함 2건 (why 칸, same_screen 키별 확인)
+- 계획: D3-03 · INBOX 결함 맨 위 두 건(작아서 한 바퀴에 둘) · src/decide.py, run.py, report.py · 근거 DESIGN §4.6~4.8
+- 한 것: (1) press·wait·done 툴에 `why` 필수 인자 추가 → run.py 가 `log.jsonl` 의 `why` 칸으로 옮김(report_bug·note 는 기존 why 사용, 없으면 "(no reason given)"). key 인자 설명에 허용 키 이름 목록을 적음(자체검사 중 Spark 가 `ArrowUp` 을 골라 act.resolve_key 가 거부할 뻔함). (2) same_screen 이 걸리면 `probe_keys` 가 그 자리에서 up/down/left/right/w/s/a/d 를 300ms 씩 눌러 키마다 전·후 캡처를 비교, 리포트에 `## 키별 확인` 표(키·바뀜/그대로·전/후 그림)와 바뀐 키·안 바뀐 키 목록을 남김. 로그 줄에는 `probe` 칸
+- 커밋: 0acb2ed feat(run), (이 커밋) docs(status)
+- 검사: 1층 py_compile → `compiled`, 단 jev NOT_SUPPORTED 라 엄밀히는 미확인 / 2층 통과(`run selftest ok`, jev SUPPORTED. 가짜 포트 same_screen 시나리오로 표·frames 복사·probe 칸 확인) / 3층 해당 없음(도구)
+- 실측: 실제 게임 3회 시도, 모두 다른 앱(Claude, 카카오톡)이 게임 창을 가려 중간에 끝남(4수·1수·9수). 세이브는 매번 백업과 `diff -rq` 동일(SAVE_SAME). `runs/20261028-204031`(4줄)·`runs/20261028-204216`(9줄) log.jsonl 모든 줄에 비지 않은 why 확인(예: "Title menu shows Continue selected so I press Enter to load the game."). same_screen 은 이번 실측에서 안 걸려 **키별 표의 실측 확인은 못 함**(자체검사만)
+- 새 리포트 bugs/0010~0016: hp_bar_lost·player_lost 7건 — 4·6·8수가 esc 로 연 일시정지 메뉴 화면이라 메뉴가 플레이어·HP 막대를 가린 오탐 가능성이 높다(미확인, 열어 본 그림: 0010 의 003.png·004.png). judge 가 메뉴 화면을 모르는 문제 — D4-03/D2-02 후보
+- 플레이어 눈: 해당 없음(도구)
+- 점검한 규칙: 3, 11, 15(세이브 백업·복원 확인, Spark·SAM 상한 안 — 단 decide.py 자체 `__main__` 이 Spark 1회 호출), 12
+- 가정한 것: 없음
+- INBOX 처리: 결함 2번(why) 삭제. 결함 1번(키별 표)은 실측 확인 때까지 유지
+- 다음: same_screen 이 걸리는 실측으로 키별 표 확인, scene 의 player 판별 기준 보정(D2-02)
 
 ## #25 · 2026-10-28 · D3-03 새 실측 10수 (INBOX 결함 1·2번)
 - 계획: D3-03 · INBOX 결함 맨 위 · `PT_MAX_ACTIONS=10 python3 src/run.py` 실측 · 근거 DESIGN §4.8

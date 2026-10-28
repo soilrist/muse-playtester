@@ -19,7 +19,7 @@
 ## 1. 한눈에
 - **한 줄 소개:** 게임을 직접 플레이하면서 버그를 찾아 리포트를 쓰는 AI 에이전트.
 - **형태:** macOS 명령줄 도구 (`python -m src.run`). Python 3.11+, `.venv`, `requirements.txt`.
-- **테스트 대상 게임:** `~/Git Project/zerostudyrpg` (Godot 4.7, 2D 픽셀 탑다운 RPG, 내부 해상도 320×240, 창 960×720). **읽기·실행만, 수정 금지.** PlayTester 는 게임 코드를 모른다고 가정하고 **화면만 보고** 플레이한다.
+- **테스트 대상 게임:** `~/Git Project/breath-of-the-abyss` — 「심연의 숨결」 공개판(github.com/soilrist/breath-of-the-abyss, `e0c2e3a` 고정 — 대상이 바뀌면 재현이 깨지므로 `git pull` 은 사람 지시 때만). 사람이 비공개 작업본에서 계속 개발 중인 미완성 게임이다 (Godot 4.7, 2D 픽셀 탑다운 RPG, 내부 해상도 320×240, 창 960×720). **읽기·실행만, 수정 금지.** PlayTester 는 게임 코드를 모른다고 가정하고 **화면만 보고** 플레이한다.
 - **사용자:** 인디 개발자 — QA 인력 없이 밤새 자기 게임을 돌려 보고 아침에 버그 리포트를 받는다.
 
 ## 2. 핵심 가치 (필러)
@@ -59,7 +59,7 @@
 - `bugs/<번호 4자리>-<slug>/report.md` + `frames/`(깃 제외) + `bugs/INDEX.md`(한 줄씩).
 - report.md 필수 칸: 제목 · 심각도 · 재현 순서(입력 목록) · 기대/실제 · 근거 프레임 경로 · 판단 근거(judge 규칙 또는 Spark `why`).
 ### 4.8 `run.py` — 세션
-- `~/Applications/Godot.app/Contents/MacOS/Godot --path ~/Git\ Project/zerostudyrpg` 로 게임 실행(PATH 에 `godot` 없음) → 3.1 루프 → 종료 조건 → 게임 종료 → `runs/<시각>/summary.md`.
+- `~/Applications/Godot.app/Contents/MacOS/Godot --path ~/Git\ Project/breath-of-the-abyss` 로 게임 실행(PATH 에 `godot` 없음) → 3.1 루프 → 종료 조건 → 게임 종료 → `runs/<시각>/summary.md`.
 ### 4.9 `viewer/` — 정적 HTML (D6)
 - `runs/`·`bugs/` 를 읽어 보여주는 정적 페이지. 서버 없음.
 
@@ -113,9 +113,9 @@
 
 ## 10. 범위 밖 (안 만드는 것)
 - 게임 코드 읽기·수정·내부 함수 호출 (화면만 본다)
-- ZeroStudyRPG 외 다른 게임 지원 (데모 뒤)
+- 「심연의 숨결」 외 다른 게임 지원 (데모 뒤)
 - 윈도우·리눅스 지원
 - 서버·DB·로그인 (viewer 는 정적 HTML)
 
 ## 11. 열린 질문
-- ZeroStudyRPG 저장소가 현재 PRIVATE — 데모 영상에는 게임 화면만 나오므로 문제 없다고 가정(🟡). 심사자가 재현하려면 공개가 필요할 수 있음.
+- 없음

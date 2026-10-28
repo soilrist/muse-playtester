@@ -5,16 +5,27 @@
 > **"지금 상태" 는 일지가 아니라 현황판** — 15줄 이내, 덧붙이지 말고 바뀐 줄만 고쳐 쓴다 (25줄을 넘으면 루프 커밋이 거절된다). 한 일은 아래 바퀴 기록에. 감독이 직접 한 일도 `## #감독 · 날짜 · 요지` 덩어리로 아래에.
 
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
-- 마일스톤: D1 골격 3/3 완료, D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 코드 완료(2층 못 함)
+- 마일스톤: D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 코드 완료(2층 못 함)
 - 브랜치: develop
-- 다음 조각: D2-01 perceive (D3-02 2층은 키 주입 원인 확인 전까지 보류 — 아래 #7), D4-01 judge
+- 다음 조각: D2-02 SAM 10장(게임플레이 장면 필요 — 키 주입이 안 되면 메뉴 화면뿐, 아래 #8), D4-01 judge. D3-02 2층은 키 주입 원인 확인 전까지 보류(#7)
 - 막힌 것: 없음 (화면 기록 권한 True 확인됨)
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
-- 비용: $0.0012 / 상한 $3 (`logs/api_usage.csv` 1줄)
+- 비용: $0.0267 / 상한 $3 (`logs/api_usage.csv` 10줄)
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #8 · 2026-10-28 · D2-01 perceive
+- 계획: D2-01 · ROADMAP 첫 `[ ]` (INBOX 루프 몫 없음) · src/perceive.py + src/meta_client.py(`call_sam`) · 근거 DESIGN §4.3, 문서 dev.meta.ai/docs/media-segmentation·sam/reading-segmentation·sam/segmenting 을 WebFetch 로 읽음
+- 한 것: `call_sam`(sam-3.1, `input_image` data URL, `stream:false`, `include_confidence`) 추가. `perceive.py` 는 7종을 한 번에 한 종류씩 SAM 에 보내 `<|box;x1..y2;c|>` 토큰만 파싱해 `Scene`(종류별 `Box` 목록·오류·`summary()`)을 만든다. 종류 하나가 실패해도 나머지 계속(Spark 폴백은 D2-02 결과를 본 뒤 정함)
+- 커밋: feat(perceive) 한 개 + docs(status) 한 개
+- 검사: 1층 통과 — `py_compile perceive+meta_client exit=0` (jev SUPPORTED, p=0.72) / 2층 못 함 — `captures/public-after-import.png`(메뉴 화면)에 7종 모두 실행해 출력은 나왔으나 전부 `[]`(`detected: nothing`). 메뉴에 해당 물체가 없어 맞는 결과로 보이지만 jev 가 "7종 출력"·"박스 파싱" 인용을 둘 다 NOT_SUPPORTED 로 판정해 통과라고 쓰지 않는다. 대신 파이프라인 확인: 같은 그림에 `moon` 을 물으니 박스 (338,94)-(429,185) 신뢰도 0.93 이 왔고 그림을 열어 보니 달 위치와 일치. 파서 자체검사(`perceive selftest ok`, jev SUPPORTED p=0.91) / 3층 해당 없음(제품 내부 도구)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 11(jev NOT_SUPPORTED 를 통과로 안 씀), 12(문자열이 아니라 그림 위치로 박스 확인), 15(키는 파일에서만 읽고 출력 안 함, 게임 폴더 수정 없음, SAM 8회 $0.02 로 상한 안)
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음. `captures/public-after-import.png` 는 내 파일이 아니라 건드리지 않았다(읽기만)
+- INBOX 처리: 루프 몫 없음
+- 다음: D2-02 는 게임플레이 장면 10장이 필요한데 지금은 키가 Godot 에 안 닿아(#7) 메뉴 화면만 찍힌다. 감독이 키 주입 되는 환경을 확인해 주기 전에는 D4-01 judge(저장된 캡처로 자체검사) 를 먼저 한다. ROADMAP D2-01 은 2층 jev 미확인이라 `[ ]` 로 두고 주석만 달았다
 
 ## #7 · 2026-10-28 · D3-02 act 2층 재확인
 - 계획: D3-02 2층 · 지난 바퀴 「다음」 · 코드 변경 없음 · 근거 DESIGN §4.5

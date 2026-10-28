@@ -97,7 +97,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             spark += 1
             why = args.get("why") if tool in ("report_bug", "note") else args.pop("why", None)  # press·wait·done 의 why 는 로그 칸으로 옮긴다
             keys, entry = (), {"step": n, "t": round(clock() - t0, 1), "scene": scene.summary(), "tool": tool,
-                               "args": args, "why": why or "(no reason given)", "capture": str(shot), "findings": []}
+                               "args": args, "why": why or "(no reason given)", "capture": _rel(run_dir, shot), "findings": []}
             if tool == "press":
                 ports["press"](args["key"], args["hold_ms"])
                 keys = (args["key"],)
@@ -115,7 +115,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                                              args["title"], f"Spark: {args['why']}", [str(shot)], run_dir.name)))
             elif tool == "note":
                 moves.append(f"note {args.get('kind', '')}")
-                notes.append({"step": n, "capture": str(shot), "kind": args.get("kind", ""),
+                notes.append({"step": n, "capture": _rel(run_dir, shot), "kind": args.get("kind", ""),
                               "what": args.get("what", ""), "why": args.get("why", "")})
             else:
                 moves.append(f"{tool} (ignored)")
@@ -152,6 +152,12 @@ def probe_keys(ports, run_dir, n):
         after = ports["capture"](Path(run_dir) / "frames" / f"probe-{n:03d}-{key}-after.png")
         table.append((key, not frames_same(before, after), str(before), str(after)))
     return table
+
+
+def _rel(run_dir, shot):
+    """run 폴더 기준 상대경로(frames/012.png). VM 의 \\\\Mac\\… 절대경로가 로그에 남지 않게 — Mac 에서 그대로 열린다."""
+    parts = Path(str(shot).replace("\\", "/")).parts
+    return "/".join(parts[parts.index("frames"):]) if "frames" in parts else str(shot)
 
 
 def _log(run_dir, entry):
@@ -207,20 +213,21 @@ def selftest():
 
     def ports(tools):
         it = iter(tools)
-        return {"capture": lambda p: shot, "perceive": lambda p: Scene(p), "decide": lambda s, r, g, i=None: next(it),
+        return {"capture": lambda p: (Path(p).parent.mkdir(parents=True, exist_ok=True), shutil.copy(shot, p), Path(p))[2], "perceive": lambda p: Scene(p), "decide": lambda s, r, g, i=None: next(it),
                 "press": lambda k, h: log.append(("press", k, h)), "wait": lambda ms: log.append(("wait", ms))}
 
     old = report.ROOT
     with tempfile.TemporaryDirectory() as d:
         globals()["ROOT"] = Path(d)
         try:
+            assert _rel("x", "\\\\Mac\\Home\\p\\runs\\r\\frames\\012.png") == "frames/012.png"
             r, n = run_session(ports(script), Path(d) / "r1")
             assert (r, n) == ("done: enough", 3), (r, n)
             assert log == [("press", "down", 100), ("wait", 1)], log
             assert "done: enough" in (Path(d) / "r1" / "summary.md").read_text(encoding="utf-8")
             rows = [json.loads(x) for x in (Path(d) / "r1" / "log.jsonl").read_text(encoding="utf-8").splitlines()]
             assert [x["step"] for x in rows] == [1, 2, 3] and rows[0]["tool"] == "press" and rows[0]["args"]["key"] == "down", rows
-            assert all(Path(x["capture"]).is_file() and x["scene"] for x in rows), rows
+            assert all(x["capture"].startswith("frames/") and (Path(d) / "r1" / x["capture"]).is_file() and x["scene"] for x in rows), rows
             assert [x["why"] for x in rows] == ["see door", "let it settle", "seen enough"] and "why" not in rows[0]["args"], rows
             r, n = run_session(ports([("wait", {"ms": 1})] * 9), Path(d) / "r2", max_actions=4)
             assert (r, n) == ("action limit", 4), (r, n)

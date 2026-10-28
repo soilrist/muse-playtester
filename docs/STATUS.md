@@ -7,7 +7,7 @@
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
 - 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: INBOX 결함(키별 확인 표) 실측 확인 — VM 실측으로 same_screen 이 실제로 걸리는 10수 실측 필요 · D4-03 · D2-02 SAM 10장(player 판별 기준 보정 포함: 마을 NPC 도 "player character" 로 셈)
+- 다음 조각: INBOX 결함(대화 키 탐색) · 키별 확인 표 실측 확인 — VM 실측으로 same_screen 이 실제로 걸리는 10수 실측 필요 · D4-03 · D2-02 SAM 10장(player 판별 기준 보정 포함: 마을 NPC 도 "player character" 로 셈)
 - 막힌 것: 없음 — 실측은 이제 Windows VM 안에서 `tools/vm/run_in_vm.sh` 로(사람 화면에 안 보임, #28). snapshot 이 바뀌면 `tools/vm/bootstrap.ps1` 재실행 필요
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
@@ -15,6 +15,17 @@
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #30 · 2026-10-28 · log.jsonl·notes capture 상대경로
+- 계획: INBOX 결함 1번(capture 경로) · 맨 위 결함 · src/run.py(_rel), src/notes.py · 근거 INBOX 본문
+- 한 것: log.jsonl 의 capture 와 notes 의 capture 를 run 폴더 기준 `frames/012.png` 로 저장(`\\Mac\Home\…` 도 변환). keep_grounded 는 run_dir 기준으로 파일 확인. 리포트(bugs/)는 이미 frames 를 복사해 상대경로라 그대로
+- 커밋: (이 커밋) fix(run)
+- 검사: 1층 py_compile → `compiled` / 2층 `run selftest ok`, `notes selftest ok` (jev SUPPORTED) / 3층 해당 없음(도구)
+- 검증 못 함: 새 VM 실측으로 log.jsonl 이 상대경로인지는 아직 안 돌림(selftest 의 가짜 포트로만 확인)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 3, 11, 12, 15
+- INBOX 처리: capture 상대경로 결함 삭제(VM 실측 확인은 위 "못 함"). 남은 결함: 대화 키 탐색, 키별 표
+- 다음: INBOX 결함 대화 키 탐색(상호작용 후보 키)
 
 ## #29 · 2026-10-28 · judge frames_same 을 바뀐 픽셀 수로
 - 계획: INBOX 결함 1번(frames_same) · 맨 위 결함 · src/judge.py, captures/same-test/ · 근거 INBOX 본문

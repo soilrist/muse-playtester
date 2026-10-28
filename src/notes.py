@@ -21,13 +21,13 @@ class Improvement:
     suggestion: str
 
 
-def keep_grounded(items):
+def keep_grounded(items, run_dir=None):
     """근거 장면(수 번호 > 0 + 실제 있는 캡처 파일)과 필수 칸이 다 있는 것만 남기고 3개까지 자른다."""
     kept = []
     for it in items:
         if not (it.problem.strip() and it.genre.strip() and it.suggestion.strip()):
             continue
-        if it.step < 1 or not it.capture or not Path(it.capture).is_file():
+        if it.step < 1 or not it.capture or not (Path(run_dir or ".") / it.capture).is_file():
             continue
         kept.append(it)
     return kept[:MAX_ITEMS]
@@ -51,8 +51,8 @@ def summarize(notes, moves):
 
 def write_notes(run_dir, items):
     """근거 없는 것을 버린 뒤 playtest_notes.md 를 쓰고 (경로, 남긴 수, 버린 수) 를 돌려준다."""
-    kept = keep_grounded(items)
     run_dir = Path(run_dir)
+    kept = keep_grounded(items, run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
     lines = ["# Playtest notes", ""]
     if not kept:

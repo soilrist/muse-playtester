@@ -7,14 +7,28 @@
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
 - 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: INBOX 결함(키별 확인 표) 실측 확인 — 사람 유휴 5분 이상일 때만 — same_screen 이 실제로 걸리는 10수 실측 필요 · D4-03 · D2-02 SAM 10장(player 판별 기준 보정 포함: 마을 NPC 도 "player character" 로 셈)
-- 막힌 것: 없음 — 사람이 맥을 쓰는 동안(유휴 5분 미만)엔 실측 자동 건너뜀(#27). 사람이 자리를 비운 사이에만 실측 가능
+- 다음 조각: INBOX 결함(키별 확인 표) 실측 확인 — VM 실측으로 same_screen 이 실제로 걸리는 10수 실측 필요 · D4-03 · D2-02 SAM 10장(player 판별 기준 보정 포함: 마을 NPC 도 "player character" 로 셈)
+- 막힌 것: 없음 — 실측은 이제 Windows VM 안에서 `tools/vm/run_in_vm.sh` 로(사람 화면에 안 보임, #28). snapshot 이 바뀌면 `tools/vm/bootstrap.ps1` 재실행 필요
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
 - 비용: 상한 $3 안 (`logs/api_usage.csv` 42줄, 10수 Spark 10회·SAM 20장)
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #28 · 2026-10-28 · D3-03 INBOX 지시 (실측을 Windows VM 안에서)
+- 계획: D3-03 · INBOX 지시(VM) 맨 위 · src/capture.py, run.py, meta_client.py, tools/vm/run_in_vm.sh · 근거 INBOX 본문
+- 한 것: (1) capture: win32 면 ctypes user32 로 제목 "심연의 숨결" 창 찾기·클라이언트 영역만 mss 캡처·SetForegroundWindow(ALT 트릭), 맨 앞 확인, 유휴 확인은 건너뜀. 맥 코드 유지. (2) run: Windows 면 GODOT/GAME=`C:\pt\...`, SAVE_DIR=`%APPDATA%`. (3) meta_client: Windows 면 키 파일을 `\\Mac\Home\.meta-api-key` 에서 읽음(출력·복사 없음). (4) `tools/vm/run_in_vm.sh`: run.cmd 를 큐에 넣고 .done 까지 기다려 .out 꼬리 출력, PT_* 환경변수는 cmd set 으로 전달
+- 지시와 다르게 한 것: `-m src.run` 이 아니라 `src\run.py` 로 부른다 — src 는 패키지가 아니라 `from capture import` 가 `-m` 에선 깨진다
+- 커밋: ba1569d feat(run), (이 커밋) docs(status)
+- 검사: 1층 py_compile → `compiled` / 2층 통과(`run selftest ok`, 맥 .venv) / 3층 해당 없음(도구)
+- 실측(VM): 통과 — 맥에서 다른 앱을 쓰는 중에 `runs/20261028-210754` 60수 완주(`summary.md`: 종료 이유 action limit, 수 60, Spark 60·SAM 120, 리포트 0). 열어 본 그림: frames/003.png(대화창, 게임 창 960x720 만 — PowerShell 없음), frames/012.png(마을 HUD, 003 과 다른 화면 = 키 뒤 화면 바뀜). 첫 호출이 PT_MAX_ACTIONS=10 을 못 넘겨 60수가 돌았음(그 뒤 set 전달 추가, 재실측 안 함)
+- 알려진 문제: `vm/queue/run.out` 에 `EXIT 0` 한 줄뿐 — python 출력(session end 줄)이 안 잡혔고 run.out 은 실행이 끝난 뒤에야 나타남. 실행 결과는 `runs/` 로 확인. 원인 미확인(감독 확인 요망). run_in_vm.sh 의 시간 초과 기본 900초(60수는 약 8분)
+- 플레이어 눈: 해당 없음(도구)
+- 점검한 규칙: 3, 11, 12, 15(키 값 출력 안 함, 세이브는 VM 안 것)
+- 가정한 것: 없음
+- INBOX 처리: VM 지시 삭제. 키별 표 결함은 same_screen 실측 확인 때까지 유지
+- 다음: VM 실측으로 same_screen 걸리는지 확인, D4-03, D2-02
 
 ## #27 · 2026-10-28 · D3-03 INBOX 결함 (포커스 빼앗김 — 유휴 확인, 사람이 돌아옴 종료)
 - 계획: D3-03 · INBOX 결함 맨 위(포커스) · src/capture.py, act.py, run.py · 근거 INBOX 본문, DESIGN §4.8

@@ -56,7 +56,8 @@ class Judge:
     def __init__(self):
         self.steps = []
         self._reported_from = None  # 이미 리포트한 같은 화면 구간의 첫 수
-        self._interact_from = None  # 이미 리포트한 상호작용 무반응 구간의 첫 수
+        self._interact_idle = []  # 화면을 못 바꾼 상호작용 눌림(그 수) 목록 — 바뀐 눌림이 나오면 비움
+        self._interact_fired = False  # 이 목록에서 이미 리포트했는가
         self._responded = False  # 이동 키를 누른 뒤 화면이 바뀐 적이 있는가 (없으면 아직 타이틀·메뉴)
 
     def check(self, step):
@@ -101,24 +102,22 @@ class Judge:
 
 
     def _interact_stuck(self, step):
-        """상호작용 키(enter·space·z·e·x)를 INTERACT_TRIES 번 연달아 눌렀는데 화면이 그대로면 한 번만 쏜다. 키는 누른 수(그림 뒤)에 붙어 있다."""
-        run = [step]
-        for s in reversed(self.steps[:-1]):
-            if not frames_same(s.image, step.image):
-                break
-            run.append(s)
-        run.reverse()
-        pressed = run[:-1]
-        tail = []
-        for s in reversed(pressed):
-            if not set(k.lower() for k in s.keys) & INTERACT_KEYS:
-                break
-            tail.append(s)
-        if len(tail) < INTERACT_TRIES or tail[-1] is self._interact_from:
+        """상호작용 키(enter·space·z·e·x)를 누르고도 화면이 안 바뀐 일이 INTERACT_TRIES 번 쌓이면 한 번만 쏜다. 사이에 이동 키가 껴도 센다(화면이 바뀐 눌림이 한 번이라도 나오면 처음부터). 키는 누른 수(그림 뒤)에 붙어 있다."""
+        if len(self.steps) < 2:
             return []
-        self._interact_from = tail[-1]
-        return [Finding("interact_stuck", f"screen unchanged after {len(tail)} interaction key presses",
-                        [str(tail[-1].image), str(step.image)])]
+        prev = self.steps[-2]
+        if not set(k.lower() for k in prev.keys) & INTERACT_KEYS:
+            return []
+        if not frames_same(prev.image, step.image):
+            self._interact_idle = []
+            self._interact_fired = False
+            return []
+        self._interact_idle.append(prev)
+        if len(self._interact_idle) < INTERACT_TRIES or self._interact_fired:
+            return []
+        self._interact_fired = True
+        return [Finding("interact_stuck", f"screen unchanged after {len(self._interact_idle)} interaction key presses",
+                        [str(self._interact_idle[0].image), str(step.image)])]
 
 
 def selftest():
@@ -156,6 +155,8 @@ def selftest():
         assert rules(talk + [Step(2, real, ("space",)), Step(3, real)]) == ["interact_stuck"]
         assert rules(talk + [Step(2, real, ("space",)), Step(3, real, ("e",)), Step(4, real)]) == ["interact_stuck"], "구간마다 한 번"
         assert rules(talk + [Step(2, other, ("enter",)), Step(3, other)]) == [], "화면이 바뀌면 아님"
+        assert rules(talk + [Step(2, real, ("down",)), Step(3, other, ("enter",)), Step(4, other)]) == ["interact_stuck"], "이동 키가 껴도 무반응 눌림 3번이면"
+        assert rules(talk + [Step(2, other, ("enter",)), Step(3, real, ("enter",)), Step(4, real)]) == [], "바뀐 눌림이 끼면 처음부터"
         sc = lambda **k: Scene(real, boxes=k)
         pb = [Box(0, 0, 1, 1)]
         assert rules([Step(0, real, scene=sc(**{"player character": pb, "health bar": pb})),

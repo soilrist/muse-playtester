@@ -5,9 +5,9 @@
 > **"지금 상태" 는 일지가 아니라 현황판** — 15줄 이내, 덧붙이지 말고 바뀐 줄만 고쳐 쓴다 (25줄을 넘으면 루프 커밋이 거절된다). 한 일은 아래 바퀴 기록에. 감독이 직접 한 일도 `## #감독 · 날짜 · 요지` 덩어리로 아래에.
 
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
-- 마일스톤: D1 골격 — 2/3 조각 (설치 세션이 저장소·문서만 세움, `src/` 비어 있음)
+- 마일스톤: D1 골격 — 2/3 조각, D3-01 decide 코드 완료(2층 jev 미확인)
 - 브랜치: develop
-- 다음 조각: D1-03 capture 2층 검증(권한 켜진 뒤) — 그 전엔 D2-01 로 넘어가도 캡처 입력이 없어 막힘
+- 다음 조각: D1-03 capture 2층 검증(권한 켜진 뒤). 권한 없이 가능한 것: D3-02 act.py, D4-01 judge(저장 캡처 필요해 어려움)
 - 막힌 것: 화면 기록 권한 없음 → capture 실제 캡처 못 함 (INBOX 막힘)
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 화면 기록·접근성 권한(캡처·키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
@@ -15,6 +15,15 @@
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #4 · 2026-10-28 · D3-01 decide
+- 계획: D3-01 · D1-03 이 권한으로 막혀 캡처 불필요한 조각으로 넘어감 · src/decide.py, meta_client 에 tools 인자 · 근거 DESIGN §4.4
+- 한 것: 공식 문서 tool-calling 을 WebFetch(함수 툴 `{type,name,description,parameters}`, `tool_choice` 는 `auto` 만, 응답 `function_call` 항목의 `arguments` 는 JSON 문자열). `call_text(tools=)`·`function_calls()` 추가, `decide.py` 에 툴 5종과 `decide()` 구현
+- 커밋: feat(decide) 한 개 + docs(status) 한 개
+- 검사: 1층 통과 — `.venv/bin/python -m py_compile src/decide.py src/meta_client.py exit=0` (jev SUPPORTED) / 2층 못 함 — `cd src && ../.venv/bin/python decide.py` 가 `('press', {'hold_ms': 500, 'key': 'w'})` `exit=0` 을 냈으나 jev evidence 가 3번 NOT_SUPPORTED 라 통과로 쓰지 않는다 / 3층 해당 없음
+- 점검한 규칙: 11(jev 불인정을 통과로 안 씀), 15(키 출력 없음, 호출 1회 $0.003)
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음. INBOX.md 에 남의 수정이 있어 건드리지 않음
+- 다음: 감독이 D3-01 2층을 위 출력으로 판정 / 권한 켜지면 D1-03
 
 ## #3 · 2026-10-28 · D1-03 capture
 - 계획: D1-03 · INBOX 지시 capture · src/capture.py · 근거 DESIGN §4.2

@@ -88,7 +88,8 @@
 ### 6.3 단가
 | 이름 | 값 | 단위 | 근거 |
 |---|---|---|---|
-| 단가 | 문서 확인 후 | USD | D1 에 dev.meta.ai/docs/models 를 읽고 근거(URL)와 함께 적는다. 못 찾으면 0 으로 적고 STATUS 에 "단가 미확인" |
+| Spark 1.3 입력 / 출력 | 1.25 / 4.25 | USD per 1M tokens | https://dev.meta.ai/docs/pricing-rate-limits (Standard mode) |
+| SAM 3.1 | 2.50 | USD per 1,000 images | 같은 페이지 |
 ### 6.4 judge 규칙
 | 이름 | 값 | 단위 | 근거 |
 |---|---|---|---|

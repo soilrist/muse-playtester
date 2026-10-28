@@ -7,7 +7,7 @@
 
 ## D1 — 10/28 골격 (합격: `logs/api_usage.csv` 에 성공 1줄 + `captures/` 에 PNG)
 - [x] D1-01 requirements.txt + .venv — 합격: `.venv/bin/python -c "import mss, Quartz, pynput, requests, PIL"` 성공
-- [ ] D1-02 meta_client 텍스트 호출 1회 — 합격: 공식 문서 3개 WebFetch 근거 + csv 성공 1줄
+- [x] D1-02 meta_client 텍스트 호출 1회 — 합격: 공식 문서 3개 WebFetch 근거 + csv 성공 1줄
 - [ ] D1-03 capture PNG 1장 — 합격: `captures/` 에 Godot 창 PNG, 경로를 STATUS 에
 
 ## D2 — 10/29 인식 (합격: SAM 결과를 STATUS 에 줄글로)

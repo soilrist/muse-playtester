@@ -7,14 +7,25 @@
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
 - 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-02 SAM 10장 완료(go), D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: D5-01 60수 세션 1회(VM) — summary.md 종료 이유 확인. SAM 은 go(#36 9/10), 단 NPC 도 "player character" 로 셈(구별은 decide 몫)
+- 다음 조각: D5-01 60수 세션 1회(VM) — 예산 때문에 🔴 질문 중(#37 INBOX). 답 전에는 D3-01·D2-01 jev 재확인이나 D6-02 README. SAM 은 go(#36 9/10), 단 NPC 도 "player character" 로 셈
 - 막힌 것: 없음 — 실측은 이제 Windows VM 안에서 `tools/vm/run_in_vm.sh` 로(사람 화면에 안 보임, #28). snapshot 이 바뀌면 `tools/vm/bootstrap.ps1` 재실행 필요
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
-- 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
-- 비용: 상한 $3 안 (`logs/api_usage.csv` 합계 약 $2.70 — 상한 $3 에 가까움, 큰 실측 전 감독이 상한 확인)
+- 사람 답 기다리는 것: 🔴 1개(API 예산 상한 증액, INBOX #37) / 🟡 가정 0개 / 안 채운 숫자 0개
+- 비용: 상한 $3 안 (`logs/api_usage.csv` 합계 약 $2.72 — 남은 약 $0.28, 60수 1회 ≈ $0.68 이라 증액 질문 중)
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #37 · 2026-10-28 · D5-01 예산 부족 확인 → 🔴 질문, D3-01 decide 재확인
+- 계획: ROADMAP `[ ]` 중 D5-01 (D2-01·D3-01 은 jev 미확인으로 뒤로, INBOX 처리 줄 없음) · 쓴 것: 코드 변경 없음, INBOX 질문 1줄
+- 한 것: 60수 세션 비용을 `logs/api_usage.csv` 로 셈 — text 232호출 $1.48(호출당 ≈$0.0064), sam 492호출 $1.23, 합계 $2.71 → 이번 바퀴 decide 2회 포함 약 $2.72. `meta_client._check_limits` 가 $3 에서 BudgetExceeded 를 던지므로 60수 1회(≈$0.68)는 중간에 끊긴다. 상한 증액은 돈 문제(🔴)라 INBOX `질문` 으로 올리고 D5-01 은 건드리지 않음
+- D3-01 재확인: `python3 -m py_compile src/decide.py` 후 `cd src && ../.venv/bin/python decide.py` 두 번 실행 → 출력 `('press', {'hold_ms': 300, 'key': 'up', 'why': 'Player at center with door to north, pressing up to walk north and explore.'})` exit=0 (첫 번째도 press up 1개). 툴 호출 1개가 나오는 건 직접 확인했지만 `jev evidence` 가 두 번 NOT_SUPPORTED(p 0.52, 0.54) → "통과" 라 쓰지 않고 D3-01 은 `[ ]` 유지
+- 커밋: 이 커밋
+- 검사: 1층 `python3 tools/check_conventions.py` → 결과: 통과 (오류 0 / 경고 0 / 미정 숫자 0) / 2층 D3-01 못 함(jev NOT_SUPPORTED 2회) / 3층 해당 없음(도구)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 5(돈은 🔴 질문), 11, 12, 15(게임 안 띄움·세이브 안 건드림, Spark 2호출 ≈$0.008, 상한 안)
+- 가정한 것(🟡): 없음 / 물은 것(🔴): API 예산 상한 증액(INBOX 질문 #37)
+- 다음: 답이 오면 D5-01 (VM 60수). 답 전에는 D6-02 README 마무리 가능한지 확인
 
 ## #36 · 2026-10-28 · D2-02 SAM 을 게임 캡처 10장에 — 9/10, go
 - 계획: D2-02 · ROADMAP 첫 `[ ]` D2-01 은 jev 확인이 남아 둘째 조각으로, 합격이 눈으로 센 박스뿐인 D2-02 먼저 (INBOX 처리 줄 없음) · 쓴 것: 임시 스크립트(scratchpad), 제품 코드 변경 없음

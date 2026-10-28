@@ -16,6 +16,18 @@
 
 ---
 
+## #29 · 2026-10-28 · judge frames_same 을 바뀐 픽셀 수로
+- 계획: INBOX 결함 1번(frames_same) · 맨 위 결함 · src/judge.py, captures/same-test/ · 근거 INBOX 본문
+- 한 것: 평균 차이(SAME_DIFF 1.0) 대신 차>24 인 픽셀 수 ≤ 50 이면 같은 화면(PIXEL_DIFF·SAME_PIXELS). 실측 캡처 012/013/014/020 을 captures/same-test/ 에 복사해 자체검사에 추가. 실측 값: 12→20 바뀐 픽셀 2835, 13→14 0
+- 검증: `runs/20261028-210754` log 를 Judge 로 다시 돌림 → same_screen 7건 (step 14·21·23·32·36·53·59). 이전엔 0건
+- 커밋: (이 커밋) fix(judge)
+- 검사: 1층 py_compile → `compiled` / 2층 `judge selftest ok` / 3층 해당 없음(도구)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 3, 11, 12, 15
+- 가정한 것: 임계 50픽셀은 내가 정함(0 과 2835 사이, 깜박임 여유)
+- INBOX 처리: frames_same 결함 삭제. 남은 결함: 경로 상대화, 대화 키 탐색, 키별 표
+- 다음: INBOX 결함 2번(capture 상대경로)
+
 ## #28 · 2026-10-28 · D3-03 INBOX 지시 (실측을 Windows VM 안에서)
 - 계획: D3-03 · INBOX 지시(VM) 맨 위 · src/capture.py, run.py, meta_client.py, tools/vm/run_in_vm.sh · 근거 INBOX 본문
 - 한 것: (1) capture: win32 면 ctypes user32 로 제목 "심연의 숨결" 창 찾기·클라이언트 영역만 mss 캡처·SetForegroundWindow(ALT 트릭), 맨 앞 확인, 유휴 확인은 건너뜀. 맥 코드 유지. (2) run: Windows 면 GODOT/GAME=`C:\pt\...`, SAVE_DIR=`%APPDATA%`. (3) meta_client: Windows 면 키 파일을 `\\Mac\Home\.meta-api-key` 에서 읽음(출력·복사 없음). (4) `tools/vm/run_in_vm.sh`: run.cmd 를 큐에 넣고 .done 까지 기다려 .out 꼬리 출력, PT_* 환경변수는 cmd set 으로 전달

@@ -8,7 +8,8 @@ from PIL import Image, ImageChops, ImageStat
 
 SAME_SCREEN_SEC = 10
 BLACK_MEAN = 8
-SAME_DIFF = 1.0  # 두 그림의 픽셀 평균 차이(0~255)가 이 이하면 같은 화면
+PIXEL_DIFF = 24  # 픽셀 밝기 차이(0~255)가 이보다 크면 "바뀐 픽셀"
+SAME_PIXELS = 50  # 바뀐 픽셀이 이 이하면 같은 화면 (작은 스프라이트 하나 이동은 수천 개 — 평균으로는 안 보임)
 MOVE_KEYS = {"up", "down", "left", "right", "w", "a", "s", "d"}
 
 
@@ -37,7 +38,8 @@ def frames_same(a, b):
     ia, ib = Image.open(a).convert("L"), Image.open(b).convert("L")
     if ia.size != ib.size:
         return False
-    return ImageStat.Stat(ImageChops.difference(ia, ib)).mean[0] <= SAME_DIFF
+    diff = ImageChops.difference(ia, ib).point(lambda v: 255 if v > PIXEL_DIFF else 0)
+    return ImageStat.Stat(diff).sum[0] / 255 <= SAME_PIXELS
 
 
 def _count(step, kind):
@@ -99,6 +101,9 @@ def selftest():
     from perceive import Box, Scene
     real = root / "captures" / "sample-d1-03.png"  # 저장된 실제 캡처
     other = root / "captures" / "priv-b0.png"
+    moved = root / "captures" / "same-test"  # VM 실측 캡처 일부 (012/020 은 캐릭터 이동, 013/014 는 픽셀 동일)
+    assert not frames_same(moved / "012.png", moved / "020.png"), "작은 스프라이트 이동도 다른 화면"
+    assert frames_same(moved / "013.png", moved / "014.png"), "픽셀 동일은 같은 화면"
     with tempfile.TemporaryDirectory() as d:
         black = Path(d) / "black.png"
         Image.new("RGB", (64, 64), (0, 0, 0)).save(black)

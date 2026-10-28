@@ -7,7 +7,7 @@
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
 - 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: 대화 키 탐색(#31 코드 완료, #32 실측에서 안 걸림 — 촌장 옆까지 못 감, 재실측 필요) · 키별 확인 표는 #32 실측으로 확인 끝 · D4-03 · D2-02 SAM 10장(player 판별 기준 보정 포함: 마을 NPC 도 "player character" 로 셈)
+- 다음 조각: 대화 키 탐색(#31 코드, #33 에서 누적 3번 판정으로 완화 — #32·#33 실측 모두 enter 를 2번밖에 안 눌러 안 걸림, Spark 가 enter 를 덜 누름) · 키별 확인 표는 #32 실측으로 확인 끝 · D4-03 · D2-02 SAM 10장(player 판별 기준 보정 포함: 마을 NPC 도 "player character" 로 셈)
 - 막힌 것: 없음 — 실측은 이제 Windows VM 안에서 `tools/vm/run_in_vm.sh` 로(사람 화면에 안 보임, #28). snapshot 이 바뀌면 `tools/vm/bootstrap.ps1` 재실행 필요
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
@@ -15,6 +15,17 @@
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #33 · 2026-10-28 · 상호작용 키 무반응을 누적 3번으로 센다
+- 계획: INBOX 결함(대화 키 탐색) 맨 위 · src/judge.py `_interact_stuck` · 근거: #32 실측에서 enter 와 이동이 섞여 "연달아 3번"이 안 걸림
+- 한 것: enter·space·z·e·x 를 누른 뒤 화면이 그대로인 일이 3번 쌓이면(이동 키가 사이에 껴도) `interact_stuck`. 화면이 바뀐 눌림이 나오면 처음부터. 자체검사에 두 경우 추가
+- 커밋: 0c82f38 fix(judge)
+- 검사: 1층 py_compile → 컴파일 오류 없음 / 2층 `judge selftest ok`, `run selftest ok`, `report selftest ok` (jev SUPPORTED) / 3층 해당 없음(도구)
+- 실측: VM 40수 `runs/20261028-222711`(action limit, 리포트 8건 `bugs/0025`~`0032` 전부 same_screen, 키별 표 있음). enter 는 18수·34수 두 번만 눌렀고 `interact_stuck` 0건, 대화창이 열린 캡처도 없음 → **검증 못 함**. 결함 줄 유지
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 2, 3, 11, 12, 15
+- INBOX 처리: 대화 키 결함 유지
+- 다음: Spark 가 퀘스트 목표(대화)를 보고 enter 를 반복하게 하려면 decide 프롬프트 손질이 필요 — 아니면 D4-03
 
 ## #32 · 2026-10-28 · VM 실측으로 키별 표·상호작용 키 탐색 확인
 - 계획: INBOX 결함 맨 위 두 줄의 검증 · `PT_MAX_ACTIONS=40 tools/vm/run_in_vm.sh` 실측(코드 변경 없음) · 근거 INBOX 본문

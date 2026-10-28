@@ -11,3 +11,11 @@
 | 0022 | [same_screen at step 33](0022-same-screen-at-step-33/report.md) | medium | 20261028-220602 |
 | 0023 | [same_screen at step 38](0023-same-screen-at-step-38/report.md) | medium | 20261028-220602 |
 | 0024 | [same_screen at step 40](0024-same-screen-at-step-40/report.md) | medium | 20261028-220602 |
+| 0025 | [same_screen at step 19](0025-same-screen-at-step-19/report.md) | medium | 20261028-222711 |
+| 0026 | [same_screen at step 21](0026-same-screen-at-step-21/report.md) | medium | 20261028-222711 |
+| 0027 | [same_screen at step 23](0027-same-screen-at-step-23/report.md) | medium | 20261028-222711 |
+| 0028 | [same_screen at step 30](0028-same-screen-at-step-30/report.md) | medium | 20261028-222711 |
+| 0029 | [same_screen at step 32](0029-same-screen-at-step-32/report.md) | medium | 20261028-222711 |
+| 0030 | [same_screen at step 35](0030-same-screen-at-step-35/report.md) | medium | 20261028-222711 |
+| 0031 | [same_screen at step 37](0031-same-screen-at-step-37/report.md) | medium | 20261028-222711 |
+| 0032 | [same_screen at step 40](0032-same-screen-at-step-40/report.md) | medium | 20261028-222711 |

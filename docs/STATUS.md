@@ -5,9 +5,9 @@
 > **"지금 상태" 는 일지가 아니라 현황판** — 15줄 이내, 덧붙이지 말고 바뀐 줄만 고쳐 쓴다 (25줄을 넘으면 루프 커밋이 거절된다). 한 일은 아래 바퀴 기록에. 감독이 직접 한 일도 `## #감독 · 날짜 · 요지` 덩어리로 아래에.
 
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
-- 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 run.py 10수 완료(runs/20261028-194618), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
+- 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 run.py 10수 재실측 대기(#22 은 log 없음 불합격 → log.jsonl 코드 #23), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: judge same_screen 이 메뉴 화면에서 오탐(#22 발견) 보정 → D4-03, D2-02 SAM 10장(게임플레이 장면 필요, Spark 가 타이틀을 못 벗어남)
+- 다음 조각: INBOX 결함 3번(decide 프롬프트: 안내문 읽기·삭제 확인창 esc) → D3-03 새 실측 10수 → D4-03, D2-02 SAM 10장
 - 막힌 것: 없음 — 키 주입 #7 해소
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
@@ -15,6 +15,17 @@
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #23 · 2026-10-28 · D3-03 log.jsonl + D4-01 same_screen 오탐 보정
+- 계획: D3-03·D4-01 · INBOX 결함 1·2번(맨 위부터, 3번은 바퀴당 조각 2개 제한으로 다음 바퀴) · src/run.py, src/judge.py, bugs/ · 근거 DESIGN §4.8·§6.4
+- 한 것: run.py 가 수마다 `runs/<시각>/log.jsonl` 에 수·t·Scene 요약·툴 이름과 인자·캡처 경로·judge 결과를 쓰고 summary.md 에서 링크. judge `same_screen` 은 구간당 1개만, 이동 키에 화면이 한 번도 반응 안 한 세션이면 안 쏜다. 처음 정한 "SAM 에 player 없음" 기준은 쓸 수 없었다 — 저장 frames 10장 전부 `player character` 1개로 잡혔다(타이틀 일러스트 인물, 001.png 직접 열어 확인). 그래서 응답 기준으로 바꾸고 DESIGN §6.4 에 적었다. `bugs/0001~0008` 삭제(git rm) + INDEX 정리. judge selftest 가 이미 깨져 있어(없는 `public-after-import.png` 를 엶) `priv-b0.png` 로 고쳤다
+- 커밋: af6def0 feat(run), a20cf5e fix(judge)
+- 검사: 1층 통과(`python3 -m py_compile src/run.py src/judge.py` → `compiled`) / 2층 통과(`judge selftest ok`, `run selftest ok` — log.jsonl 3줄·캡처 경로 실재 검증 포함, jev 둘 다 SUPPORTED. 저장 frames 001~010 을 SAM 재인식해 mtime·키(w d s a space e w d s a)로 judge 에 재생 → `findings: []`) / 3층 해당 없음(화면 없음)
+- 플레이어 눈: 해당 없음(도구)
+- 점검한 규칙: 3(자기 파일만 add), 11, 15(게임 안 띄움, SAM 10장만 호출 ≈$0.05 x2 재생, 세이브 안 건드림), 5(규칙 문서 안 고침)
+- 못 한 것: 새 run 의 log.jsonl 10줄 실측은 안 했다(게임 실행 필요, decide 보정 후 한 번에). `bugs/000N-*` 빈 폴더 8개가 디스크에 남음(`rm` 거부됨; 추적 안 되는 빈 폴더라 git 에는 없음)
+- INBOX 처리: 결함 2번(오탐 8개) 삭제. 결함 1번(log)은 새 실측 10줄 확인 때까지 유지. 결함 3번 남음
+- 다음: decide 프롬프트 보정(결함 3) → D3-03 새 실측으로 log.jsonl 10줄과 타이틀 탈출 확인
 
 ## #22 · 2026-10-28 · D3-02 합격 + D3-03 실제 10수
 - 계획: D3-02·D3-03 · INBOX 답(감독) 1번 · 코드 변경 없음, 실행·확인 · 근거 DESIGN §4.5·§4.8

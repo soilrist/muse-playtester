@@ -1,5 +1,6 @@
 """세션 (DESIGN §4.8). 게임을 띄우고 perceive → decide → act → judge 를 상한까지 돌린다."""
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,7 +14,8 @@ from report import Bug, write_report
 
 ROOT = Path(__file__).resolve().parent.parent
 GODOT = Path.home() / "Applications/Godot.app/Contents/MacOS/Godot"
-GAME = Path.home() / "Git Project/breath-of-the-abyss"
+GAME = Path.home() / "Git Project/zerostudyrpg-snapshot"
+SAVE_DIR = Path.home() / "Library/Application Support/Godot/app_userdata/심연의 숨결"  # 사람 세이브와 공유
 SEE = ["player character", "health bar"]  # judge 규칙이 쓰는 둘만 묻는다 (SAM 상한 120 = 60수 x 2장)
 GOAL = "explore the game and look for bugs"
 BOOT_SEC = 6
@@ -32,6 +34,24 @@ def default_ports():
     return {"capture": capture.capture, "perceive": lambda p: perceive.perceive(p, SEE),
             "decide": decide.decide, "press": act.press, "wait": act.wait,
             "summarize": summarize}
+
+
+def backup_saves(src, dst):
+    """세이브 폴더를 dst 로 통째 복사한다. 폴더가 없으면 None."""
+    src = Path(src)
+    if not src.is_dir():
+        return None
+    shutil.copytree(src, dst)
+    return Path(dst)
+
+
+def restore_saves(src, backup):
+    """세이브 폴더를 백업 시점 그대로 되돌린다 (백업 뒤에 생긴 파일은 지운다). backup 이 None 이면 폴더가 원래 없었던 것."""
+    src = Path(src)
+    if src.exists():
+        shutil.rmtree(src)
+    if backup is not None:
+        shutil.copytree(backup, src)
 
 
 def launch_game():
@@ -110,12 +130,17 @@ def _summary(run_dir, reason, n, spark, sam, bug_paths):
 
 def main():
     run_dir = ROOT / "runs" / datetime.now().strftime("%Y%m%d-%H%M%S")
-    game = launch_game()
+    backup = backup_saves(SAVE_DIR, ROOT / "backups" / ("userdata-" + datetime.now().strftime("%Y%m%d-%H%M%S")))
     try:
-        time.sleep(BOOT_SEC)
-        reason, n = run_session(default_ports(), run_dir)
+        game = launch_game()
+        try:
+            time.sleep(BOOT_SEC)
+            reason, n = run_session(default_ports(), run_dir)
+        finally:
+            game.terminate()
+            game.wait()
     finally:
-        game.terminate()
+        restore_saves(SAVE_DIR, backup)
     print(f"session end: {reason} ({n} steps) -> {run_dir}")
 
 
@@ -159,6 +184,17 @@ def selftest():
             assert r.startswith("stopped:") and (Path(d) / "r6" / "summary.md").is_file(), r
         finally:
             globals()["ROOT"] = old
+    with tempfile.TemporaryDirectory() as d:
+        save, bak = Path(d) / "save", Path(d) / "bak"
+        save.mkdir()
+        (save / "slot1.json").write_text("orig", encoding="utf-8")
+        b = backup_saves(save, bak)
+        (save / "slot1.json").write_text("changed", encoding="utf-8")
+        (save / "new.json").write_text("x", encoding="utf-8")
+        restore_saves(save, b)
+        assert (save / "slot1.json").read_text(encoding="utf-8") == "orig" and not (save / "new.json").exists()
+        assert subprocess.run(["diff", "-r", str(save), str(bak)]).returncode == 0
+        assert backup_saves(Path(d) / "none", Path(d) / "bak2") is None
     print("run selftest ok")
 
 

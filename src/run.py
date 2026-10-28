@@ -9,6 +9,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+from capture import Interrupted, human_idle_seconds
 from judge import Judge, Step, frames_same
 from notes import summarize, write_notes
 from report import Bug, write_report
@@ -23,6 +24,8 @@ BOOT_SEC = 6
 PROBE_KEYS = ["up", "down", "left", "right", "w", "s", "a", "d"]  # 반대 방향이 이웃하게 — 벽에 막힌 쪽과 열린 쪽이 표에서 갈린다
 PROBE_HOLD_MS = 300
 PROBE_SETTLE_MS = 200
+IDLE_MIN_SEC = 300  # 사람이 이보다 최근에 맥을 만졌으면 실측하지 않는다 (게임은 창 포커스를 잃으면 스스로 일시정지한다)
+HUMAN_BACK = "사람이 돌아옴"
 
 
 def _limit(name, default):
@@ -70,9 +73,10 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     run_dir = Path(run_dir)
     (run_dir / "frames").mkdir(parents=True, exist_ok=True)
     judge, moves, bug_paths, spark, sam, notes = Judge(), [], [], 0, 0, []
-    t0, reason, n = clock(), "action limit", 0
+    t0, reason, n, entry = clock(), "action limit", 0, None
     try:
         for n in range(1, max_actions + 1):
+            entry = None
             if spark + 1 > max_spark:
                 reason = "spark call limit"
                 n -= 1
@@ -118,6 +122,9 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                 if table:
                     entry["probe"] = {k: changed for k, changed, _, _ in table}
             _log(run_dir, entry)
+    except Interrupted as e:  # 다른 앱이 앞으로 왔다 — 판정하지 않고, 창을 되찾지 않고, 정상 종료
+        reason = HUMAN_BACK
+        _log(run_dir, {**(entry or {"step": n, "capture": ""}), "interrupted": True, "interrupt_detail": str(e)})
     except Exception as e:  # BudgetExceeded 포함 — 어떤 이유든 기록은 남기고 끝낸다
         reason = f"stopped: {type(e).__name__}: {e}"
     if notes and "summarize" in ports:  # 세션 끝에 Spark 1회로 소감 정리 (DESIGN §4.10)
@@ -158,13 +165,25 @@ def _summary(run_dir, reason, n, spark, sam, bug_paths):
     (Path(run_dir) / "summary.md").write_text("\n".join(lines), encoding="utf-8")
 
 
+def human_busy(idle_fn=human_idle_seconds, min_sec=IDLE_MIN_SEC):
+    """사람이 맥을 쓰는 중이면 유휴 초(문자열 설명용), 아니면 None. 유휴를 못 읽으면 쓰는 중이 아닌 것으로 본다."""
+    idle = idle_fn()
+    return idle if idle is not None and idle < min_sec else None
+
+
 def main():
+    idle = human_busy()
+    if idle is not None:
+        print(f"사람 사용 중, 실측 미룸 (유휴 {idle:.0f}초 < {IDLE_MIN_SEC}초)")
+        return
     run_dir = ROOT / "runs" / datetime.now().strftime("%Y%m%d-%H%M%S")
     backup = backup_saves(SAVE_DIR, ROOT / "backups" / ("userdata-" + datetime.now().strftime("%Y%m%d-%H%M%S")))
     try:
         game = launch_game()
         try:
             time.sleep(BOOT_SEC)
+            import act
+            act.focus_game()  # 세션 시작 때 단 한 번만 창을 올린다 — 이후엔 빼앗지 않는다
             reason, n = run_session(default_ports(), run_dir)
         finally:
             game.terminate()
@@ -236,6 +255,21 @@ def selftest():
             rep = next((Path(d) / "bugs").glob("*same-screen*/report.md")).read_text(encoding="utf-8")
             assert "## 키별 확인" in rep and "| up | 그대로 |" in rep and "| d | 그대로 |" in rep, rep
             assert any((next((Path(d) / "bugs").glob("*same-screen*")) / "frames").glob("probe-*-up-before.png"))
+            # 사람이 돌아옴: 3번째 수의 press 중 다른 앱이 앞으로 옴 → interrupted 로그, judge·리포트 없음, 정상 종료
+            def rude(k, h):
+                if len(log) >= 2:
+                    raise Interrupted("Claude 가 앞으로 왔다")
+                log.append(("press", k, h))
+            log.clear()
+            p9 = ports([("press", {"key": "down", "hold_ms": 100})] * 6)
+            p9["press"] = rude
+            before = len(list((Path(d) / "bugs").glob("*/report.md")))
+            r, n = run_session(p9, Path(d) / "r9")
+            rows = [json.loads(x) for x in (Path(d) / "r9" / "log.jsonl").read_text(encoding="utf-8").splitlines()]
+            assert (r, n) == (HUMAN_BACK, 3) and rows[-1].get("interrupted") and rows[-1]["step"] == 3 and not rows[-1]["findings"] and len(rows) == 3, (r, n, rows)
+            assert "사람이 돌아옴" in (Path(d) / "r9" / "summary.md").read_text(encoding="utf-8")
+            assert len(list((Path(d) / "bugs").glob("*/report.md"))) == before
+            assert human_busy(lambda: 60.0) == 60.0 and human_busy(lambda: 301.0) is None and human_busy(lambda: None) is None
             r, n = run_session(ports([]), Path(d) / "r6")  # decide 가 StopIteration → 기록 남기고 끝
             assert r.startswith("stopped:") and (Path(d) / "r6" / "summary.md").is_file(), r
         finally:

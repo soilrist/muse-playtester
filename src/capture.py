@@ -15,6 +15,10 @@ FOCUS_WAIT = 0.6
 ROOT = Path(__file__).resolve().parent.parent
 
 
+class Interrupted(RuntimeError):
+    """사람이 맥을 쓰러 돌아와 다른 앱이 게임 창 앞으로 왔다. 창을 다시 빼앗지 않고 세션을 끝낸다."""
+
+
 def _layer0_windows():
     """화면에 보이는 일반(layer 0) 창을 앞에서 뒤 순서로 돌려준다."""
     opts = Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements
@@ -51,16 +55,26 @@ def frontmost_owner():
     return wins[0].get("kCGWindowOwnerName") if wins else None
 
 
-def capture(path):
-    """게임 창을 path 에 PNG 로 저장하고 Path 를 돌려준다. 창이 없으면 RuntimeError."""
+def human_idle_seconds():
+    """사람이 키보드·마우스를 만진 지 몇 초 지났나 (ioreg HIDIdleTime, ns). 읽지 못하면 None."""
+    import re
+    import subprocess
+    out = subprocess.run(["ioreg", "-c", "IOHIDSystem"], capture_output=True, text=True).stdout
+    m = re.search(r'"HIDIdleTime" = (\d+)', out)
+    return int(m.group(1)) / 1e9 if m else None
+
+
+def capture(path, raise_to_front=False):
+    """게임 창을 path 에 PNG 로 저장하고 Path 를 돌려준다. 창이 없으면 RuntimeError, 다른 앱이 앞이면 Interrupted (raise_to_front 면 대신 올린다)."""
     game = find_game_window()
     if game is None:
         raise RuntimeError("게임 창을 찾지 못했다 (Godot 창이 떠 있는지, 화면 기록 권한이 있는지 확인)")
     pid, (x, y, w, h) = game
-    bring_to_front(pid)
+    if raise_to_front:
+        bring_to_front(pid)
     front = frontmost_owner()
     if front != OWNER:
-        raise RuntimeError(f"게임 창이 가려져 있다 (맨 앞 창: {front}) — 틀린 그림은 저장하지 않는다")
+        raise Interrupted(f"게임 창이 가려져 있다 (맨 앞 창: {front}) — 틀린 그림은 저장하지 않는다")
     x, y, w, h = find_game_window()[1]
     with mss.mss() as sct:
         shot = sct.grab({"left": x, "top": y, "width": w, "height": h})
@@ -75,6 +89,6 @@ def capture(path):
 
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else ROOT / "captures" / f"capture-{time.strftime('%Y%m%d-%H%M%S')}.png"
-    p = capture(out)
+    p = capture(out, raise_to_front=True)
     with Image.open(p) as im:
         print(f"saved {p} {im.size[0]}x{im.size[1]}")

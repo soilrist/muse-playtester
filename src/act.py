@@ -4,7 +4,7 @@ import time
 
 from pynput.keyboard import Controller, Key
 
-from capture import OWNER, bring_to_front, find_game_window, frontmost_owner
+from capture import OWNER, Interrupted, bring_to_front, find_game_window, frontmost_owner
 
 # decide 가 주는 키 이름 → pynput 특수키. 한 글자 키는 그대로 누른다.
 SPECIAL_KEYS = {
@@ -42,13 +42,18 @@ def focus_game():
     raise RuntimeError(f"게임 창이 가려져 있다 (맨 앞 창: {front}) — 키를 누르지 않는다")
 
 
-def press(key_name, hold_ms):
-    """게임 창을 앞으로 올리고 key_name 을 hold_ms(상한 MAX_HOLD_MS) 동안 누른다."""
+def press(key_name, hold_ms, raise_to_front=False):
+    """key_name 을 hold_ms(상한 MAX_HOLD_MS) 동안 누른다. 키 전·후에 게임이 맨 앞이 아니면 Interrupted (창을 다시 빼앗지 않는다)."""
     key = resolve_key(key_name)
-    focus_game()
+    if raise_to_front:
+        focus_game()
+    elif frontmost_owner() != OWNER:
+        raise Interrupted("키를 누르기 전에 다른 앱이 앞으로 왔다")
     _keyboard.press(key)
     time.sleep(min(max(hold_ms, 30), MAX_HOLD_MS) / 1000)
     _keyboard.release(key)
+    if frontmost_owner() != OWNER:
+        raise Interrupted("키를 누르는 사이 다른 앱이 앞으로 왔다")
 
 
 def wait(ms):
@@ -57,5 +62,5 @@ def wait(ms):
 
 
 if __name__ == "__main__":
-    press(sys.argv[1] if len(sys.argv) > 1 else "down", int(sys.argv[2]) if len(sys.argv) > 2 else 120)
+    press(sys.argv[1] if len(sys.argv) > 1 else "down", int(sys.argv[2]) if len(sys.argv) > 2 else 120, raise_to_front=True)
     print("pressed")

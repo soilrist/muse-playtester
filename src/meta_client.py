@@ -56,12 +56,18 @@ def _log(model, kind, in_tok, out_tok, images, cost, ok):
         w.writerow([time.strftime("%Y-%m-%dT%H:%M:%S"), model, kind, in_tok, out_tok, images, f"{cost:.6f}", int(ok)])
 
 
-def call_text(prompt, model="muse-spark-1.3", timeout=60, tools=None):
-    """텍스트 입력 1회 호출. 응답 JSON 반환."""
+def call_text(prompt, model="muse-spark-1.3", timeout=60, tools=None, image=None):
+    """텍스트 입력 1회 호출(image 경로가 있으면 그림 1장 같이). 응답 JSON 반환."""
     _check_limits(model)
     in_tok = out_tok = 0
     ok = False
     try:
+        if image:
+            import base64
+            b64 = base64.b64encode(Path(image).read_bytes()).decode()
+            prompt = [{"type": "message", "role": "user", "content": [
+                {"type": "input_text", "text": prompt},
+                {"type": "input_image", "image_url": f"data:image/png;base64,{b64}"}]}]
         r = requests.post(
             ENDPOINT,
             headers={"Authorization": f"Bearer {_api_key()}", "Content-Type": "application/json"},

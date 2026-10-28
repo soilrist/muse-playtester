@@ -81,7 +81,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             shot = ports["capture"](run_dir / "frames" / f"{n:03d}.png")
             scene = ports["perceive"](shot)
             sam += len(SEE)
-            tool, args = ports["decide"](scene.summary(), moves, goal)
+            tool, args = ports["decide"](scene.summary(), moves, goal, shot)
             spark += 1
             keys, entry = (), {"step": n, "t": round(clock() - t0, 1), "scene": scene.summary(), "tool": tool,
                                "args": args, "capture": str(shot), "findings": []}
@@ -164,7 +164,7 @@ def selftest():
 
     def ports(tools):
         it = iter(tools)
-        return {"capture": lambda p: shot, "perceive": lambda p: Scene(p), "decide": lambda s, r, g: next(it),
+        return {"capture": lambda p: shot, "perceive": lambda p: Scene(p), "decide": lambda s, r, g, i=None: next(it),
                 "press": lambda k, h: log.append(("press", k, h)), "wait": lambda ms: log.append(("wait", ms))}
 
     old = report.ROOT

@@ -17,13 +17,16 @@ TOOLS = [
 ]
 
 
-def decide(scene_text, recent, goal):
-    """(tool_name, args) 하나를 반환. recent 는 최근 5수 문자열 목록."""
+def decide(scene_text, recent, goal, image=None):
+    """(tool_name, args) 하나를 반환. recent 는 최근 5수 문자열 목록. image 는 현재 화면 캡처 경로."""
     prompt = (
         "You are a game playtester. Choose exactly ONE tool call as your next action.\n"
+        "Rules: (1) First read any control hints printed on the screen and use exactly those keys "
+        "(menus usually take arrow keys + Enter). (2) If a dialog asks to delete, erase or overwrite "
+        "(delete / overwrite / 지운다 / 삭제 / 덮어쓰기), NEVER confirm it. Any on-screen warning about erasing a save or 'press once more to proceed' means a destructive confirmation is pending: press esc to cancel it right away.\n"
         f"Goal: {goal}\nScene: {scene_text}\nRecent moves: {json.dumps(recent[-5:])}"
     )
-    calls = function_calls(call_text(prompt, tools=TOOLS))
+    calls = function_calls(call_text(prompt, tools=TOOLS, image=image))
     if not calls:
         raise RuntimeError("툴 호출 없음")
     return calls[0]

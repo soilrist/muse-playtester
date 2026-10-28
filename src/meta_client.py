@@ -78,6 +78,30 @@ def call_text(prompt, model="muse-spark-1.3", timeout=60, tools=None):
         _log(model, "text", in_tok, out_tok, 0, in_tok * SPARK_IN_PER_TOKEN + out_tok * SPARK_OUT_PER_TOKEN, ok)
 
 
+def call_sam(prompt, png_path, timeout=60):
+    """SAM 3.1 에 이미지 1장 + 물체 이름 1개. 응답 JSON 반환 (media-segmentation 문서)."""
+    import base64
+    _check_limits("sam-3.1")
+    ok = False
+    try:
+        b64 = base64.b64encode(Path(png_path).read_bytes()).decode()
+        r = requests.post(
+            ENDPOINT,
+            headers={"Authorization": f"Bearer {_api_key()}", "Content-Type": "application/json"},
+            json={"model": "sam-3.1", "stream": False, "metadata": {"include_confidence": "true"},
+                  "input": [{"type": "message", "role": "user", "content": [
+                      {"type": "input_text", "text": prompt},
+                      {"type": "input_image", "image_url": f"data:image/png;base64,{b64}"}]}]},
+            timeout=timeout,
+        )
+        r.raise_for_status()
+        data = r.json()
+        ok = data.get("status") == "completed"
+        return data
+    finally:
+        _log("sam-3.1", "sam", 0, 0, 1, SAM_PER_IMAGE, ok)
+
+
 def function_calls(data):
     """응답에서 function_call 항목을 (name, args dict) 목록으로."""
     import json

@@ -6,9 +6,10 @@ New-Item -ItemType Directory -Force $Q | Out-Null
 while ($true) {
   Get-ChildItem $Q -Filter *.cmd | ForEach-Object {
     $base = $_.FullName -replace '\.cmd$', ''
-    $c = Get-Content $_.FullName -Raw
+    # 끝 줄바꿈이 남으면 cmd 가 거기서 줄을 끊어 '> .out' 리다이렉트가 사라진다
+    $c = (Get-Content $_.FullName -Raw).Trim()
     Remove-Item $_.FullName
-    cmd /c "chcp 65001 >nul & $c > `"$base.out`" 2>&1"
+    cmd /c "(chcp 65001 >nul & $c) > `"$base.out`" 2>&1"  # 괄호: && 사슬 전체를 받는다
     "EXIT $LASTEXITCODE" | Add-Content "$base.out"
     New-Item "$base.done" -Force | Out-Null
   }

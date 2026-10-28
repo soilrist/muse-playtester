@@ -17,4 +17,4 @@ while [ ! -f "$Q/run.done" ]; do
   if [ "$waited" -ge "$TIMEOUT" ]; then echo "VM 실행 시간 초과 (${TIMEOUT}초)"; tail -n 20 "$Q/run.out" 2>/dev/null; exit 2; fi
 done
 tail -n 30 "$Q/run.out"
-grep -q '^EXIT 0$' "$Q/run.out"
+tr -d '\r' < "$Q/run.out" | grep -q '^EXIT 0$'  # Windows 줄끝(\r\n)

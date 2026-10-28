@@ -1,0 +1,5 @@
+mss
+pyobjc-framework-Quartz
+pynput
+requests
+pillow

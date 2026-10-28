@@ -112,3 +112,6 @@ bugs/*/frames/
 .venv/
 /graphify-out/
 backups/
+
+# Windows VM 실행 대리인 주고받는 곳
+/vm/

@@ -5,16 +5,27 @@
 > **"지금 상태" 는 일지가 아니라 현황판** — 15줄 이내, 덧붙이지 말고 바뀐 줄만 고쳐 쓴다 (25줄을 넘으면 루프 커밋이 거절된다). 한 일은 아래 바퀴 기록에. 감독이 직접 한 일도 `## #감독 · 날짜 · 요지` 덩어리로 아래에.
 
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
-- 마일스톤: D1 골격 — 2/3 조각, D3-01 decide 코드 완료(2층 jev 미확인)
+- 마일스톤: D1 골격 3/3 완료, D3-01 decide 코드 완료(2층 jev 미확인)
 - 브랜치: develop
-- 다음 조각: D1-03 capture 2층 검증(권한 켜진 뒤). 권한 없이 가능한 것: D3-02 act.py, D4-01 judge(저장 캡처 필요해 어려움)
-- 막힌 것: 화면 기록 권한 없음 → capture 실제 캡처 못 함 (INBOX 막힘)
-- 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 화면 기록·접근성 권한(캡처·키 입력 첫 실행 때)
+- 다음 조각: D3-02 act.py (pynput 키 입력), 이어서 D2 인식·D4-01 judge
+- 막힌 것: 없음 (화면 기록 권한 True 확인됨)
+- 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
 - 비용: $0.0012 / 상한 $3 (`logs/api_usage.csv` 1줄)
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #5 · 2026-10-28 · D1-03 capture 가려진 창 결함
+- 계획: D1-03 · INBOX 결함 1번(맨 위) · src/capture.py · 근거 DESIGN §4.2
+- 한 것: 캡처 전에 `NSRunningApplication.activateWithOptions_` 로 Godot 를 앞으로 + 0.6초 대기, 찍기 직전 layer 0 맨 앞 창 소유자가 Godot 가 아니면 RuntimeError(그림 저장 안 함). 시험은 Godot 를 직접 띄우고 끝나면 종료. 같은 실행 `Quartz.CGPreflightScreenCaptureAccess()` 출력 `True` (권한 있음, `[!] 사람` 불필요)
+- 커밋: feat(capture) 한 개 + docs(status) 한 개
+- 검사: 1층 통과 — `.venv/bin/python -m py_compile src/capture.py exit=0` (jev SUPPORTED) / 2층 못 함 — `saved captures/sample-d1-03.png 480x392` 출력, `exit=0` 이나 jev evidence 가 NOT_SUPPORTED 라 통과로 쓰지 않는다 / 3층 통과 — `captures/sample-d1-03.png` 를 열어 봄: 「심연의 숨결 (DEBUG)」 타이틀 메뉴(새 게임·이어하기·클리어 기록·종료)가 보이고 다른 앱 창은 없음
+- 플레이어 눈: 해당 없음(제품 내부 도구)
+- 점검한 규칙: 15(게임 폴더 수정 없음, 키 값 없음), 11(jev 불인정 2층을 통과로 안 씀), 13(캡처 파일은 고정 경로, 이번 실행 후 열어 봄)
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음. 부수: mss.mss 가 deprecated 경고(mss.MSS 권장) — 동작엔 영향 없어 유지
+- INBOX 처리: 결함·capture 지시·화면 기록 막힘 3줄 삭제(삭제 조건 충족)
+- 다음: D3-02 act.py
 
 ## #4 · 2026-10-28 · D3-01 decide
 - 계획: D3-01 · D1-03 이 권한으로 막혀 캡처 불필요한 조각으로 넘어감 · src/decide.py, meta_client 에 tools 인자 · 근거 DESIGN §4.4

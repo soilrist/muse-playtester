@@ -5,7 +5,7 @@
 > **"지금 상태" 는 일지가 아니라 현황판** — 15줄 이내, 덧붙이지 말고 바뀐 줄만 고쳐 쓴다 (25줄을 넘으면 루프 커밋이 거절된다). 한 일은 아래 바퀴 기록에. 감독이 직접 한 일도 `## #감독 · 날짜 · 요지` 덩어리로 아래에.
 
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
-- 마일스톤: D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 코드 완료(2층 못 함), D4-01 judge·D4-02 report·D6-04 notes 완료
+- 마일스톤: D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 코드 완료(2층 못 함), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer 완료
 - 브랜치: develop
 - 다음 조각: D4-03(run.py 의 끼임 재현 필요, D3-03 뒤), D2-02 SAM 10장(게임플레이 장면 필요 — 키 주입 문제, #8). D3-02 2층은 키 주입 원인 확인 전까지 보류(#7)
 - 막힌 것: 없음 (화면 기록 권한 True 확인됨)
@@ -15,6 +15,17 @@
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #14 · 2026-10-28 · D6-01 viewer
+- 계획: D6-01 · ROADMAP 의 `[ ]` 중 D2~D5 는 키 주입(#7·#8) 에 막혀 오프라인으로 되는 첫 조각 · src/viewer_build.py + viewer/index.html · 근거 DESIGN §4.9
+- 한 것: 정적 페이지는 폴더 목록을 못 읽으므로 `viewer_build.py build` 가 `bugs/INDEX.md` 표와 `runs/*/summary.md` 를 HTML 한 장에 박는다(최근 세션이 위, 소감 파일이 있으면 링크, 모든 글자는 html.escape). 리포트·세션 링크는 `../bugs/…`·`../runs/…` 상대경로
+- 커밋: feat(viewer) 한 개 + docs(status) 한 개
+- 검사: 1층 통과 — `py_compile src/viewer_build.py exit=0` (jev SUPPORTED, p=0.87) / 2층 통과 — 버그 1줄(제목에 `<in>`)·세션 2개로 빌드해 표·정렬·이스케이프·소감 링크를 확인하는 자체검사 `viewer_build selftest ok` (jev SUPPORTED, p=0.94) / 3층 headless Chrome 으로 `captures/tmp/viewer-empty.png` 를 열어 봄: 제목·"Bug reports (0)"·"Sessions (0)" 빈 상태 문구가 보인다. 리포트가 있는 화면은 못 찍음(실제 리포트 없음, 자체검사로 대신). `check_conventions.py` 결과: 통과 (오류 0 / 경고 0 / 미정 숫자 0)
+- 플레이어 눈: 처음 보는 심사자가 열면 제목·두 목록이 바로 보인다. 다만 리포트 링크는 저장소 루트에서 열어야 이어지고, `frames/` 는 깃 제외라 이미지는 로컬에서만 보인다
+- 점검한 규칙: 11(출력 그대로 인용), 12(렌더 결과·화면으로 확인), 15(src/ 안, 모델 호출 없음)
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음
+- INBOX 처리: 루프 몫 없음
+- 다음: 남은 오프라인 조각 D6-02 README 마무리 → D6-03 영상 대본. D6-01 은 리포트가 생기면 `viewer_build.py build` 를 다시 돌려 갱신한다. 참고: #12·#13 은 STATUS 에 기록이 없다
 
 ## #11 · 2026-10-28 · D6-04 playtest_notes
 - 계획: D6-04 · ROADMAP 의 `[ ]` 중 D2~D5 는 키 주입(#7·#8) 때문에 막혀 오프라인으로 되는 첫 조각 · src/notes.py (새 파일, report.py 와 역할이 달라 분리) · 근거 DESIGN §4.10

@@ -5,7 +5,7 @@
 > **"지금 상태" 는 일지가 아니라 현황판** — 15줄 이내, 덧붙이지 말고 바뀐 줄만 고쳐 쓴다 (25줄을 넘으면 루프 커밋이 거절된다). 한 일은 아래 바퀴 기록에. 감독이 직접 한 일도 `## #감독 · 날짜 · 요지` 덩어리로 아래에.
 
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
-- 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 코드 완료(2층 못 함), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 run.py 코드 완료(실제 10수 못 함)
+- 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 코드 완료(2층 못 함), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 run.py 코드 완료(실제 10수 못 함), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
 - 다음 조각: 남은 `[ ]` 는 전부 키 주입(#7) 해소가 필요 — 사람 터미널에서 `python src/act.py down 150` 후 메뉴 커서 이동 확인 요청. D4-03, D2-02 SAM 10장(게임플레이 장면 필요 — 키 주입 문제, #8). D3-02 2층은 키 주입 원인 확인 전까지 보류(#7)
 - 막힌 것: 없음 (화면 기록 권한 True 확인됨)
@@ -15,6 +15,17 @@
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #18 · 2026-10-28 · D5-03 note 연결
+- 계획: D5-03 · 남은 `[ ]` 중 키 주입 #7 에 안 막힌 코드 부분 · src/run.py · 근거 DESIGN §4.4·§4.10 (decide.py 에는 note 툴이 이미 있었고 run.py 가 무시하고 있었다)
+- 한 것: run.py 가 `note` 를 수 번호·캡처 경로와 함께 모으고, 세션 끝에 notes.summarize → write_notes 로 `runs/<시각>/playtest_notes.md` 를 쓴다. 노트가 없으면 Spark 를 부르지 않는다. 정리 실패는 종료 이유 뒤에 덧붙이고 세션 기록은 남긴다
+- 커밋: feat(run) 한 개 + docs(status) 한 개
+- 검사: 1층 통과 — `compile_exit=0` / 2층 못 함 — 자체검사 `run selftest ok`, `notes selftest ok`(jev SUPPORTED)는 가짜 입력으로 note→playtest_notes.md 연결만 본 것이고, 합격 기준인 실제 60수 세션에서 note 가 로그에 남는지는 돌리지 않았다(키 주입 #7) / 3층 해당 없음
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 11(실제 출력만 인용, 실제 세션은 못 함), 14(D5-03 은 ROADMAP 에 있는 조각), 15(API 호출 안 함, 키 없음). 시스템 python3 에는 requests 가 없어 `.venv/bin/python` 으로 돌렸다
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음. `captures/public-after-import.png` 는 내 파일이 아니라 건드리지 않음
+- INBOX 처리: 루프 몫 없음
+- 다음: 키 주입 확인 뒤 `python src/run.py` 로 10수·60수 실측(D3-03·D5-01·D5-03 2층). 그 전엔 오프라인으로 할 `[ ]` 가 없다
 
 ## #17 · 2026-10-28 · D3-03 run.py
 - 계획: D3-03 · ROADMAP 첫 `[ ]` 중 코드로 쓸 수 있는 조각(D2-02·D3-02 2층·D4-03 은 키 주입 #7 에 막힘) · src/run.py · 근거 DESIGN §3.2·§4.8

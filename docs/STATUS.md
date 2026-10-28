@@ -7,14 +7,24 @@
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
 - 마일스톤: D1 골격 — 2/3 조각 (설치 세션이 저장소·문서만 세움, `src/` 비어 있음)
 - 브랜치: develop
-- 다음 조각: INBOX 지시 capture (D1-03)
-- 막힌 것: 없음
+- 다음 조각: D1-03 capture 2층 검증(권한 켜진 뒤) — 그 전엔 D2-01 로 넘어가도 캡처 입력이 없어 막힘
+- 막힌 것: 화면 기록 권한 없음 → capture 실제 캡처 못 함 (INBOX 막힘)
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 화면 기록·접근성 권한(캡처·키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
 - 비용: $0.0012 / 상한 $3 (`logs/api_usage.csv` 1줄)
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #3 · 2026-10-28 · D1-03 capture
+- 계획: D1-03 · INBOX 지시 capture · src/capture.py · 근거 DESIGN §4.2
+- 한 것: `src/capture.py` 작성(Quartz 창 탐색 소유자 Godot + mss 영역 캡처, 폭 1280 이하 PNG). Godot 를 `--path` 로 직접 띄워 시도 → `Quartz.CGPreflightScreenCaptureAccess()` 출력 `False`, 창 제목이 전부 `None` 이고 `find_game_window` 가 None → RuntimeError. 이 터미널에 화면 기록 권한이 없다. 띄운 Godot 는 종료함. 부수 관찰: 게임 `.godot/imported` 가 없어 폰트 로드 오류와 `title.gd:11` 스크립트 오류 로그가 났다(게임 수정 금지라 손대지 않음, 결함 후보)
+- 커밋: feat(capture) 한 개 + docs(status) 한 개
+- 검사: 1층 통과 — `.venv/bin/python -m py_compile src/capture.py` `exit=0` / 2층 못 함 — `.venv/bin/python src/capture.py captures/sample-d1-03.png` 가 `RuntimeError: 게임 창을 찾지 못했다` `exit=1` (권한 없음) / 3층 못 함(캡처 PNG 없음 — 감독 아님, 사람 권한 필요)
+- 점검한 규칙: 15(게임 폴더 수정 없음·키 값 없음), 11(못 한 2층을 통과라 쓰지 않음)
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음. 막힘 1건(사람이 시스템 설정 > 개인정보 > 화면 기록에서 터미널/Claude 허용)
+- INBOX 처리: capture 지시는 2층 미검증이라 삭제하지 않고 남김. 막힘 줄 추가
+- 다음: 권한이 켜지면 capture 2층·3층 확인 후 D1-03 `[x]`
 
 ## #2 · 2026-10-28 · D1-02 meta_client
 - 계획: D1-02 · INBOX 지시 1번 · src/meta_client.py, DESIGN §6.3 단가 · 근거 DESIGN §4.1

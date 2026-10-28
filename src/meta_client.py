@@ -1,6 +1,7 @@
 """Meta Model API client (DESIGN §4.1). Endpoint/format from dev.meta.ai/docs (quickstart, models, media-segmentation, pricing-rate-limits)."""
 import csv
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -28,7 +29,8 @@ def _limit(name, default):
 def _api_key():
     key = os.environ.get("META_API_KEY")
     if not key:
-        key = (Path.home() / ".meta-api-key").read_text().strip()
+        home = Path(r"\\Mac\Home") if sys.platform == "win32" else Path.home()  # VM 은 맥 홈을 공유 폴더로 본다 (읽기만)
+        key = (home / ".meta-api-key").read_text().strip()
     return key
 
 

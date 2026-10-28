@@ -15,9 +15,14 @@ from notes import summarize, write_notes
 from report import Bug, write_report
 
 ROOT = Path(__file__).resolve().parent.parent
-GODOT = Path.home() / "Applications/Godot.app/Contents/MacOS/Godot"
-GAME = Path.home() / "Git Project/zerostudyrpg-snapshot"
-SAVE_DIR = Path.home() / "Library/Application Support/Godot/app_userdata/심연의 숨결"  # 사람 세이브와 공유
+if sys.platform == "win32":  # Parallels Windows VM — tools/vm/bootstrap.ps1 이 깐 자리. 세이브는 VM 안 것이라 사람 세이브와 무관
+    GODOT = Path(r"C:\pt\godot\godot.exe")
+    GAME = Path(r"C:\pt\game")
+    SAVE_DIR = Path(os.environ.get("APPDATA", "")) / "Godot/app_userdata/심연의 숨결"
+else:
+    GODOT = Path.home() / "Applications/Godot.app/Contents/MacOS/Godot"
+    GAME = Path.home() / "Git Project/zerostudyrpg-snapshot"
+    SAVE_DIR = Path.home() / "Library/Application Support/Godot/app_userdata/심연의 숨결"  # 사람 세이브와 공유
 SEE = ["player character", "health bar"]  # judge 규칙이 쓰는 둘만 묻는다 (SAM 상한 120 = 60수 x 2장)
 GOAL = "explore the game and look for bugs"
 BOOT_SEC = 6

@@ -4,9 +4,17 @@ import time
 from pathlib import Path
 
 import mss
-import Quartz
-from AppKit import NSRunningApplication
 from PIL import Image
+
+WIN = sys.platform == "win32"
+if WIN:  # Windows VM 안에서 돌 때 — 사람 화면에 안 보이게 (INBOX 2026-10-28 21:08)
+    import ctypes
+    from ctypes import wintypes
+    user32 = ctypes.windll.user32
+    user32.SetProcessDPIAware()  # 창 사각형과 mss 가 같은 물리 픽셀을 쓰게
+else:
+    import Quartz
+    from AppKit import NSRunningApplication
 
 OWNER = "Godot"
 TITLE_HINT = "심연의 숨결"
@@ -19,6 +27,34 @@ class Interrupted(RuntimeError):
     """사람이 맥을 쓰러 돌아와 다른 앱이 게임 창 앞으로 왔다. 창을 다시 빼앗지 않고 세션을 끝낸다."""
 
 
+def _win_title(hwnd):
+    buf = ctypes.create_unicode_buffer(256)
+    user32.GetWindowTextW(hwnd, buf, 256)
+    return buf.value
+
+
+def _win_game_hwnd():
+    """제목에 TITLE_HINT 가 든 보이는 최상위 창의 핸들. 없으면 None."""
+    hits = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def each(hwnd, _):
+        if user32.IsWindowVisible(hwnd) and TITLE_HINT in _win_title(hwnd):
+            hits.append(hwnd)
+        return True
+    user32.EnumWindows(each, 0)
+    return hits[0] if hits else None
+
+
+def _win_client_rect(hwnd):
+    """창 안쪽(제목줄·테두리 제외) 사각형을 화면 좌표 (x, y, w, h) 로."""
+    r = wintypes.RECT()
+    user32.GetClientRect(hwnd, ctypes.byref(r))
+    pt = wintypes.POINT(0, 0)
+    user32.ClientToScreen(hwnd, ctypes.byref(pt))
+    return (pt.x, pt.y, r.right - r.left, r.bottom - r.top)
+
+
 def _layer0_windows():
     """화면에 보이는 일반(layer 0) 창을 앞에서 뒤 순서로 돌려준다."""
     opts = Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements
@@ -28,6 +64,9 @@ def _layer0_windows():
 
 def find_game_window():
     """게임 창을 (pid, (x, y, w, h)) 로 돌려준다. 없으면 None. 제목이 일치하는 창을 우선한다."""
+    if WIN:
+        hwnd = _win_game_hwnd()
+        return (hwnd, _win_client_rect(hwnd)) if hwnd else None
     found = []
     for w in _layer0_windows():
         if w.get("kCGWindowOwnerName") != OWNER:
@@ -43,6 +82,13 @@ def find_game_window():
 
 def bring_to_front(pid):
     """pid 의 앱을 맨 앞으로 올리고 화면에 반영될 때까지 잠깐 기다린다."""
+    if WIN:
+        user32.keybd_event(0x12, 0, 0, 0)  # ALT 를 한 번 눌러야 SetForegroundWindow 가 막히지 않는다
+        user32.keybd_event(0x12, 0, 2, 0)
+        user32.ShowWindow(pid, 9)  # SW_RESTORE
+        user32.SetForegroundWindow(pid)
+        time.sleep(FOCUS_WAIT)
+        return
     app = NSRunningApplication.runningApplicationWithProcessIdentifier_(pid)
     if app is not None:
         app.activateWithOptions_(1 << 1)  # NSApplicationActivateIgnoringOtherApps
@@ -51,12 +97,17 @@ def bring_to_front(pid):
 
 def frontmost_owner():
     """맨 앞 일반 창의 소유 앱 이름. 창이 없으면 None."""
+    if WIN:
+        hwnd = user32.GetForegroundWindow()
+        return OWNER if hwnd and hwnd == _win_game_hwnd() else (_win_title(hwnd) or None)
     wins = [w for w in _layer0_windows() if w["kCGWindowBounds"]["Width"] >= 200]
     return wins[0].get("kCGWindowOwnerName") if wins else None
 
 
 def human_idle_seconds():
     """사람이 키보드·마우스를 만진 지 몇 초 지났나 (ioreg HIDIdleTime, ns). 읽지 못하면 None."""
+    if WIN:
+        return None  # VM 안에는 사람이 없다 — 유휴 확인을 건너뛴다
     import re
     import subprocess
     out = subprocess.run(["ioreg", "-c", "IOHIDSystem"], capture_output=True, text=True).stdout

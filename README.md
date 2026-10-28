@@ -9,7 +9,7 @@ Built from scratch during Meta Global AI Developer Hackathon (Oct 28 – Nov 4, 
 - **Muse Spark 1.3** — decision: picks the next action via tool calling (`press`, `wait`, `report_bug`, `done`).
 
 ## Game under test
-[Breath of the Abyss](https://github.com/soilrist/breath-of-the-abyss) — my own unfinished Godot 4 top-down RPG (public, pinned at `e0c2e3a`). PlayTester never reads its code; it only sees the screen and presses keys.
+Breath of the Abyss — my own unfinished Godot 4 top-down RPG, tested on a pinned snapshot of the private dev build (an older public version lives at [soilrist/breath-of-the-abyss](https://github.com/soilrist/breath-of-the-abyss)). PlayTester never reads its code; it only sees the screen and presses keys.
 
 ## How to run
 ```bash

@@ -111,3 +111,4 @@ runs/
 bugs/*/frames/
 .venv/
 /graphify-out/
+backups/

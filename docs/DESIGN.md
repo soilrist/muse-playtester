@@ -19,7 +19,7 @@
 ## 1. 한눈에
 - **한 줄 소개:** 게임을 직접 플레이하면서 버그를 찾아 리포트를 쓰는 AI 에이전트.
 - **형태:** macOS 명령줄 도구 (`python -m src.run`). Python 3.11+, `.venv`, `requirements.txt`.
-- **테스트 대상 게임:** `~/Git Project/breath-of-the-abyss` — 「심연의 숨결」 공개판(github.com/soilrist/breath-of-the-abyss, `e0c2e3a` 고정 — 대상이 바뀌면 재현이 깨지므로 `git pull` 은 사람 지시 때만). 사람이 비공개 작업본에서 계속 개발 중인 미완성 게임이다 (Godot 4.7, 2D 픽셀 탑다운 RPG, 내부 해상도 320×240, 창 960×720). **읽기·실행만, 수정 금지.** PlayTester 는 게임 코드를 모른다고 가정하고 **화면만 보고** 플레이한다.
+- **테스트 대상 게임:** `~/Git Project/zerostudyrpg-snapshot` — 「심연의 숨결」 비공개 개발판(`~/ZeroStudyRPG`)을 `07a3d58c` 에서 복제해 고정한 복사본(원격 없음 — 대상이 바뀌면 재현이 깨지므로 새로 복제는 사람 지시 때만). 사람이 계속 개발 중인 미완성 게임이다. 캡처·리포트가 공개 저장소에 올라가는 것은 사람이 허락함(2026-10-28) (Godot 4.7, 2D 픽셀 탑다운 RPG, 내부 해상도 320×240, 창 960×720). **읽기·실행만, 수정 금지.** PlayTester 는 게임 코드를 모른다고 가정하고 **화면만 보고** 플레이한다.
 - **사용자:** 인디 개발자 — QA 인력 없이 밤새 자기 게임을 돌려 보고 아침에 버그 리포트를 받는다.
 
 ## 2. 핵심 가치 (필러)
@@ -60,7 +60,7 @@
 - `bugs/<번호 4자리>-<slug>/report.md` + `frames/`(깃 제외) + `bugs/INDEX.md`(한 줄씩).
 - report.md 필수 칸: 제목 · 심각도 · 재현 순서(입력 목록) · 기대/실제 · 근거 프레임 경로 · 판단 근거(judge 규칙 또는 Spark `why`).
 ### 4.8 `run.py` — 세션
-- `~/Applications/Godot.app/Contents/MacOS/Godot --path ~/Git\ Project/breath-of-the-abyss` 로 게임 실행(PATH 에 `godot` 없음) → 3.1 루프 → 종료 조건 → 게임 종료 → `runs/<시각>/summary.md`.
+- `~/Applications/Godot.app/Contents/MacOS/Godot --path ~/Git\ Project/zerostudyrpg-snapshot` 로 게임 실행(PATH 에 `godot` 없음) → 3.1 루프 → 종료 조건 → 게임 종료 → `runs/<시각>/summary.md`.
 ### 4.10 플레이 소감 (`report.py` 가 씀, D5~D6)
 - 버그와 **따로** 낸다: 버그 = 객관·재현 순서, 소감 = 주관·근거 장면.
 - 플레이 중 `note` 로 모은 메모 + 세션 기록을 세션 끝에 Spark 1회로 정리 → `runs/<시각>/playtest_notes.md` 에 **개선점 최대 3개**.

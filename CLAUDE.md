@@ -8,7 +8,7 @@
 - 출품: Meta Global AI Developer Hackathon · Indie Developer 트랙 · **제출 마감 2026-11-05 11:00 KST** · 제출물 = 공개 저장소 + 3분 데모 영상. 해커톤 규칙은 `docs/DESIGN.md` §0 (먼저 읽는다).
 - 언어: Python 3.11+ · 가상환경 `.venv` · 의존성 `requirements.txt` · **제품 코드는 전부 `src/`** (`loop/`·`docs/`·`tools/` 는 공개 템플릿 soilrist/loop-starter-kit)
 - 메타 모델: SAM 3.1(인식) · Muse Spark `muse-spark-1.3`(판단·툴 호출). 키는 `~/.meta-api-key` 또는 `META_API_KEY` 에서만 읽는다.
-- 테스트 대상 게임: `~/Git Project/breath-of-the-abyss` — 「심연의 숨결」 공개판(soilrist/breath-of-the-abyss, `e0c2e3a` 고정, `git pull` 은 사람 지시 때만) (Godot 4.7, 2D 픽셀 탑다운 RPG, 창 960×720). **읽기·실행만, 수정 금지.** PlayTester 는 게임 코드를 모르고 화면만 보고 플레이한다.
+- 테스트 대상 게임: `~/Git Project/zerostudyrpg-snapshot` — 「심연의 숨결」 비공개 개발판의 고정 복사본(`07a3d58c`, 원격 없음 — 새 버전은 사람 지시 때 감독이 다시 복제). 원본 `~/ZeroStudyRPG` 는 사람이 개발 중이라 열지 않는다. 세이브 폴더 `~/Library/Application Support/Godot/app_userdata/심연의 숨결/` 는 사람 세이브와 공유 — 세션 전 백업·후 복원 필수(DESIGN §6) (Godot 4.7, 2D 픽셀 탑다운 RPG, 창 960×720). **읽기·실행만, 수정 금지.** PlayTester 는 게임 코드를 모르고 화면만 보고 플레이한다.
 - Godot 실행 파일: `~/Applications/Godot.app/Contents/MacOS/Godot` (4.7.2, PATH 에 `godot` 없음)
 - 그림·모델·소리 만드는 도구: 없음 (일꾼은 명령줄·WebFetch 만)
 - 설계서 `docs/DESIGN.md` · 진행 `docs/STATUS.md` · 순서 `docs/ROADMAP.md`
@@ -27,7 +27,7 @@
 
 ## 함정 (이 프로젝트에서 실제로 넘어진 곳 — 20줄 이내)
 > 규칙이 아니라 사실만 한 줄씩: "무엇을 하면 → 무엇이 깨진다 → 대신 이렇게". 감독이 사고기록(`docs/postmortems/`)에서 옮겨 적고, 더는 안 맞는 줄은 지운다 (DIRECTOR.md "규칙이 샐 때").
-- `godot` 명령이 없다 → `godot --path …` 가 실패 → `~/Applications/Godot.app/Contents/MacOS/Godot --path ~/Git\ Project/breath-of-the-abyss`
+- `godot` 명령이 없다 → `godot --path …` 가 실패 → `~/Applications/Godot.app/Contents/MacOS/Godot --path ~/Git\ Project/zerostudyrpg-snapshot`
 - Meta API 엔드포인트·요청 형식을 기억으로 쓰면 → 틀린다 → 공식 문서(dev.meta.ai/docs)를 WebFetch 로 읽고 쓴다
 
 ## 너는 누구인가 (둘 중 하나)

@@ -36,7 +36,7 @@ LOOP_TOOLS=""
 # 엔진 에디터·MCP 가 살아 있는지처럼 "이게 죽어 있으면 바퀴가 통째로 헛도는 것" 하나를 싸게 확인하는 명령을 감독이 넣는다
 # 예) Unity 상주 에디터: 'pgrep -f "Unity.*-projectPath" >/dev/null'   예) 로컬 서버: 'curl -fsS localhost:8080/health >/dev/null'
 # PlayTester: 키 파일이 있고, logs/api_usage.csv 의 cost_usd 합이 PT_BUDGET_USD 이하일 때만 바퀴를 돈다 (DESIGN §6.2)
-LOOP_PREFLIGHT_CMD='test -s "$HOME/.meta-api-key" && { [ ! -f logs/api_usage.csv ] || awk -F, -v max="${PT_BUDGET_USD:-3}" '"'"'NR==1{for(i=1;i<=NF;i++)if($i=="cost_usd")c=i;next} c{s+=$c} END{if(s>max){print "budget exceeded: " s " > " max; exit 1}}'"'"' logs/api_usage.csv; }'
+LOOP_PREFLIGHT_CMD='test -s "$HOME/.meta-api-key" && { [ ! -f logs/api_usage.csv ] || awk -F, -v max="${PT_BUDGET_USD:-6}" '"'"'NR==1{for(i=1;i<=NF;i++)if($i=="cost_usd")c=i;next} c{s+=$c} END{if(s>max){print "budget exceeded: " s " > " max; exit 1}}'"'"' logs/api_usage.csv; }'
 LOOP_PREFLIGHT_SLEEP_SEC=600
 
 # 한 바퀴 비용 상한(달러, 비우면 제한 없음) — claude --max-budget-usd

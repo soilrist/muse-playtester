@@ -51,11 +51,15 @@ def _count(step, kind):
 class Judge:
     def __init__(self):
         self.steps = []
+        self._reported_from = None  # 이미 리포트한 같은 화면 구간의 첫 수
+        self._responded = False  # 이동 키를 누른 뒤 화면이 바뀐 적이 있는가 (없으면 아직 타이틀·메뉴)
 
     def check(self, step):
         """새 수를 넣고 이번에 걸린 이상 목록을 돌려준다."""
         prev = self.steps[-1] if self.steps else None
         self.steps.append(step)
+        if prev and set(k.lower() for k in prev.keys) & MOVE_KEYS and not frames_same(prev.image, step.image):
+            self._responded = True
         found = []
         if prev and mean_brightness(step.image) <= BLACK_MEAN and mean_brightness(prev.image) <= BLACK_MEAN:
             found.append(Finding("black_screen", f"mean brightness <= {BLACK_MEAN} on 2 consecutive steps",
@@ -70,7 +74,9 @@ class Judge:
         return found
 
     def _same_screen(self, step):
-        """이동 키를 눌렀는데 SAME_SCREEN_SEC 초 넘게 화면이 같으면 끼임."""
+        """이동 키를 눌렀는데 SAME_SCREEN_SEC 초 넘게 화면이 같으면 끼임. 구간마다 한 번만, 이동 키에 화면이 한 번도 안 반응한 세션(타이틀·메뉴)에서는 안 쏜다."""
+        if not self._responded:
+            return []
         run = [step]
         for s in reversed(self.steps[:-1]):
             if not frames_same(s.image, step.image):
@@ -81,15 +87,18 @@ class Judge:
             return []
         if not any(set(k.lower() for k in s.keys) & MOVE_KEYS for s in run[1:]):
             return []
+        if run[0] is self._reported_from:
+            return []
+        self._reported_from = run[0]
         return [Finding("same_screen", f"screen unchanged for {run[-1].t - run[0].t:.0f}s while move keys were pressed",
                         [str(run[0].image), str(run[-1].image)])]
 
 
 def selftest():
     root = Path(__file__).resolve().parent.parent
-    real = root / "captures" / "sample-d1-03.png"  # 저장된 실제 캡처
-    other = root / "captures" / "public-after-import.png"
     from perceive import Box, Scene
+    real = root / "captures" / "sample-d1-03.png"  # 저장된 실제 캡처
+    other = root / "captures" / "priv-b0.png"
     with tempfile.TemporaryDirectory() as d:
         black = Path(d) / "black.png"
         Image.new("RGB", (64, 64), (0, 0, 0)).save(black)
@@ -103,9 +112,15 @@ def selftest():
         assert rules([Step(0, real), Step(1, other)]) == [], "다른 화면 두 장은 이상 아님"
         assert rules([Step(0, black), Step(1, black)]) == ["black_screen"], "검은 화면 2수 연속"
         assert rules([Step(0, real), Step(1, black)]) == [], "검은 화면 1수는 페이드로 본다"
-        assert rules([Step(0, real, ("down",)), Step(5, real, ("down",))]) == [], "10초 미만"
-        assert rules([Step(0, real, ("down",)), Step(6, real, ("down",)), Step(11, real, ("down",))]) == ["same_screen"]
-        assert rules([Step(0, real, ("e",)), Step(11, real, ("e",))]) == [], "이동 키가 아니면 끼임 아님"
+        w = [Step(-2, other, ("down",)), Step(-1, real, ("down",))]
+        assert rules(w + [Step(0, real, ("down",)), Step(5, real, ("down",))]) == [], "10초 미만"
+        assert rules(w + [Step(0, real, ("down",)), Step(6, real, ("down",)), Step(11, real, ("down",))]) == ["same_screen"]
+        assert rules(w + [Step(0, real, ("e",)), Step(11, real, ("e",))]) == [], "이동 키가 아니면 끼임 아님"
+        walk = [Step(0, other, ("down",)), Step(1, real, ("down",))]  # 이동 키에 화면이 반응했다
+        stuck = walk + [Step(t, real, ("down",)) for t in (7, 12, 18, 24)]
+        assert rules(stuck) == ["same_screen"], "같은 구간은 리포트 1개만"
+        assert rules(stuck + [Step(30, other, ("down",))] + [Step(t, real, ("down",)) for t in (36, 42, 48)]) == ["same_screen", "same_screen"], "구간이 끊긴 뒤 새 끼임은 새 리포트"
+        assert rules([Step(t, real, ("down",)) for t in (0, 6, 11, 17)]) == [], "이동 키에 한 번도 반응 안 한 타이틀·메뉴는 끼임 아님"
         sc = lambda **k: Scene(real, boxes=k)
         pb = [Box(0, 0, 1, 1)]
         assert rules([Step(0, real, scene=sc(**{"player character": pb, "health bar": pb})),

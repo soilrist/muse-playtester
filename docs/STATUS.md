@@ -7,14 +7,26 @@
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
 - 마일스톤: D6-02 README 부분(run.py 대기), D1 골격 3/3 완료, D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: INBOX 결함 1번(키별 확인 표) 실측 확인 — same_screen 이 실제로 걸리는 10수 실측 필요 · D4-03 · D2-02 SAM 10장(player 판별 기준 보정 포함: 마을 NPC 도 "player character" 로 셈)
-- 막힌 것: 없음 — 키 주입 #7 해소. 실측 중 다른 앱(Claude·카카오톡)이 게임 창을 가리면 act.focus_game 이 세션을 끝낸다(#26 에서 3번 중 3번)
+- 다음 조각: INBOX 결함(키별 확인 표) 실측 확인 — 사람 유휴 5분 이상일 때만 — same_screen 이 실제로 걸리는 10수 실측 필요 · D4-03 · D2-02 SAM 10장(player 판별 기준 보정 포함: 마을 NPC 도 "player character" 로 셈)
+- 막힌 것: 없음 — 사람이 맥을 쓰는 동안(유휴 5분 미만)엔 실측 자동 건너뜀(#27). 사람이 자리를 비운 사이에만 실측 가능
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
 - 비용: 상한 $3 안 (`logs/api_usage.csv` 42줄, 10수 Spark 10회·SAM 20장)
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #27 · 2026-10-28 · D3-03 INBOX 결함 (포커스 빼앗김 — 유휴 확인, 사람이 돌아옴 종료)
+- 계획: D3-03 · INBOX 결함 맨 위(포커스) · src/capture.py, act.py, run.py · 근거 INBOX 본문, DESIGN §4.8
+- 한 것: (1) run.main 이 시작 전 `ioreg` HIDIdleTime 을 읽어 300초 미만이면 "사람 사용 중, 실측 미룸" 출력 후 게임을 띄우지 않고 끝냄. (2) capture·act.press 가 창을 다시 올리지 않음(세션 시작 때 `focus_game` 한 번만) — 맨 앞이 Godot 이 아니면 `Interrupted`. 키 전·후 모두 확인. run_session 이 잡아 log 에 `interrupted: true`, judge 생략, 종료 이유 "사람이 돌아옴", 세이브는 main 의 finally 가 복원. (3) 오탐 bugs/0010~0016 삭제 + INDEX 정리
+- 커밋: 5b5ef55 fix(run), (이 커밋) docs(status)
+- 검사: 1층 py_compile → `compiled` / 2층 통과(`run selftest ok`, jev SUPPORTED. 가짜 press 가 3수째에 Interrupted → 종료 이유·interrupted 로그·리포트 수 불변, 가짜 유휴 60초는 실측 안 함 확인) / 3층 해당 없음(도구)
+- 실측: 못 함 — 지금 사람이 맥 사용 중(`main` 실행 출력: `사람 사용 중, 실측 미룸 (유휴 0초 < 300초)`), 규칙대로 미룸
+- 플레이어 눈: 해당 없음(도구)
+- 점검한 규칙: 3, 11, 12, 15(게임 안 띄움)
+- 가정한 것: 유휴를 못 읽으면 사용 중 아님으로 봄
+- INBOX 처리: 포커스 결함 삭제. 키별 표 결함은 실측 확인 때까지 유지
+- 다음: 사람 유휴 때 same_screen 이 걸리는 실측으로 키별 표 확인, D2-02
 
 ## #26 · 2026-10-28 · D3-03 INBOX 결함 2건 (why 칸, same_screen 키별 확인)
 - 계획: D3-03 · INBOX 결함 맨 위 두 건(작아서 한 바퀴에 둘) · src/decide.py, run.py, report.py · 근거 DESIGN §4.6~4.8

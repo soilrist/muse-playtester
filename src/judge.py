@@ -11,6 +11,8 @@ BLACK_MEAN = 8
 PIXEL_DIFF = 24  # 픽셀 밝기 차이(0~255)가 이보다 크면 "바뀐 픽셀"
 SAME_PIXELS = 50  # 바뀐 픽셀이 이 이하면 같은 화면 (작은 스프라이트 하나 이동은 수천 개 — 평균으로는 안 보임)
 MOVE_KEYS = {"up", "down", "left", "right", "w", "a", "s", "d"}
+INTERACT_KEYS = {"enter", "space", "z", "e", "x"}
+INTERACT_TRIES = 3  # 상호작용 키를 이만큼 눌렀는데 화면이 그대로면 "상호작용이 안 먹힌다"
 
 
 @dataclass
@@ -54,6 +56,7 @@ class Judge:
     def __init__(self):
         self.steps = []
         self._reported_from = None  # 이미 리포트한 같은 화면 구간의 첫 수
+        self._interact_from = None  # 이미 리포트한 상호작용 무반응 구간의 첫 수
         self._responded = False  # 이동 키를 누른 뒤 화면이 바뀐 적이 있는가 (없으면 아직 타이틀·메뉴)
 
     def check(self, step):
@@ -67,6 +70,7 @@ class Judge:
             found.append(Finding("black_screen", f"mean brightness <= {BLACK_MEAN} on 2 consecutive steps",
                                  [str(prev.image), str(step.image)]))
         found += self._same_screen(step)
+        found += self._interact_stuck(step)
         if prev:
             for rule, kind in (("hp_bar_lost", "health bar"), ("player_lost", "player character")):
                 before, now = _count(prev, kind), _count(step, kind)
@@ -94,6 +98,27 @@ class Judge:
         self._reported_from = run[0]
         return [Finding("same_screen", f"screen unchanged for {run[-1].t - run[0].t:.0f}s while move keys were pressed",
                         [str(run[0].image), str(run[-1].image)])]
+
+
+    def _interact_stuck(self, step):
+        """상호작용 키(enter·space·z·e·x)를 INTERACT_TRIES 번 연달아 눌렀는데 화면이 그대로면 한 번만 쏜다. 키는 누른 수(그림 뒤)에 붙어 있다."""
+        run = [step]
+        for s in reversed(self.steps[:-1]):
+            if not frames_same(s.image, step.image):
+                break
+            run.append(s)
+        run.reverse()
+        pressed = run[:-1]
+        tail = []
+        for s in reversed(pressed):
+            if not set(k.lower() for k in s.keys) & INTERACT_KEYS:
+                break
+            tail.append(s)
+        if len(tail) < INTERACT_TRIES or tail[-1] is self._interact_from:
+            return []
+        self._interact_from = tail[-1]
+        return [Finding("interact_stuck", f"screen unchanged after {len(tail)} interaction key presses",
+                        [str(tail[-1].image), str(step.image)])]
 
 
 def selftest():
@@ -126,6 +151,11 @@ def selftest():
         assert rules(stuck) == ["same_screen"], "같은 구간은 리포트 1개만"
         assert rules(stuck + [Step(30, other, ("down",))] + [Step(t, real, ("down",)) for t in (36, 42, 48)]) == ["same_screen", "same_screen"], "구간이 끊긴 뒤 새 끼임은 새 리포트"
         assert rules([Step(t, real, ("down",)) for t in (0, 6, 11, 17)]) == [], "이동 키에 한 번도 반응 안 한 타이틀·메뉴는 끼임 아님"
+        talk = [Step(0, real, ("enter",)), Step(1, real, ("enter",))]
+        assert rules(talk + [Step(2, real)]) == [], "2번 눌렀다 — 아직"
+        assert rules(talk + [Step(2, real, ("space",)), Step(3, real)]) == ["interact_stuck"]
+        assert rules(talk + [Step(2, real, ("space",)), Step(3, real, ("e",)), Step(4, real)]) == ["interact_stuck"], "구간마다 한 번"
+        assert rules(talk + [Step(2, other, ("enter",)), Step(3, other)]) == [], "화면이 바뀌면 아님"
         sc = lambda **k: Scene(real, boxes=k)
         pb = [Box(0, 0, 1, 1)]
         assert rules([Step(0, real, scene=sc(**{"player character": pb, "health bar": pb})),

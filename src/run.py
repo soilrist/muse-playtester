@@ -27,6 +27,7 @@ SEE = ["player character", "health bar"]  # judge 규칙이 쓰는 둘만 묻는
 GOAL = "explore the game and look for bugs"
 BOOT_SEC = 6
 PROBE_KEYS = ["up", "down", "left", "right", "w", "s", "a", "d"]  # 반대 방향이 이웃하게 — 벽에 막힌 쪽과 열린 쪽이 표에서 갈린다
+INTERACT_PROBE_KEYS = ["enter", "space", "z", "e", "x"]  # 통하는 키가 나오면 거기서 멈춘다 (대화창이 열렸는데 또 누르면 넘어가 버린다)
 PROBE_HOLD_MS = 300
 PROBE_SETTLE_MS = 200
 IDLE_MIN_SEC = 300  # 사람이 이보다 최근에 맥을 만졌으면 실측하지 않는다 (게임은 창 포커스를 잃으면 스스로 일시정지한다)
@@ -120,12 +121,20 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             else:
                 moves.append(f"{tool} (ignored)")
             for f in judge.check(Step(clock() - t0, shot, keys, scene)):
-                table = probe_keys(ports, run_dir, n) if f.rule == "same_screen" else []
-                bug_paths.append(_report(Bug(f"{f.rule} at step {n}", "medium", list(moves), "game keeps responding",
+                table, sev, expect = [], "medium", "game keeps responding"
+                if f.rule == "same_screen":
+                    table = probe_keys(ports, run_dir, n)
+                elif f.rule == "interact_stuck":
+                    table = probe_keys(ports, run_dir, n, INTERACT_PROBE_KEYS, True)
+                    sev, expect = "low", "an interaction key opens a dialog or inspects something"
+                    worked = [k for k, changed, _, _ in table if changed]
+                    moves.append(f"hint: '{worked[0]}' changes the screen when interacting — use it" if worked else
+                                 "hint: none of enter/space/z/e/x changed the screen here — move closer or try another goal")
+                bug_paths.append(_report(Bug(f"{f.rule} at step {n}", sev, list(moves), expect,
                                              f.why, f"judge rule {f.rule}", f.frames, run_dir.name, table)))
                 entry["findings"].append(f.rule)
                 if table:
-                    entry["probe"] = {k: changed for k, changed, _, _ in table}
+                    entry.setdefault("probe", {}).update({k: changed for k, changed, _, _ in table})
             _log(run_dir, entry)
     except Interrupted as e:  # 다른 앱이 앞으로 왔다 — 판정하지 않고, 창을 되찾지 않고, 정상 종료
         reason = HUMAN_BACK
@@ -142,15 +151,17 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     return reason, n
 
 
-def probe_keys(ports, run_dir, n):
-    """끼임이 걸린 자리에서 이동 후보 키를 하나씩 눌러 키마다 화면이 바뀌었는지 본다. [(키, 바뀜, 전 그림, 후 그림)]."""
+def probe_keys(ports, run_dir, n, keys=PROBE_KEYS, stop_on_change=False):
+    """걸린 자리에서 후보 키를 하나씩 눌러 키마다 화면이 바뀌었는지 본다. [(키, 바뀜, 전 그림, 후 그림)]."""
     table = []
-    for key in PROBE_KEYS:
+    for key in keys:
         before = ports["capture"](Path(run_dir) / "frames" / f"probe-{n:03d}-{key}-before.png")
         ports["press"](key, PROBE_HOLD_MS)
         ports["wait"](PROBE_SETTLE_MS)
         after = ports["capture"](Path(run_dir) / "frames" / f"probe-{n:03d}-{key}-after.png")
         table.append((key, not frames_same(before, after), str(before), str(after)))
+        if stop_on_change and table[-1][1]:
+            break
     return table
 
 
@@ -267,6 +278,16 @@ def selftest():
             rep = next((Path(d) / "bugs").glob("*same-screen*/report.md")).read_text(encoding="utf-8")
             assert "## 키별 확인" in rep and "| up | 그대로 |" in rep and "| d | 그대로 |" in rep, rep
             assert any((next((Path(d) / "bugs").glob("*same-screen*")) / "frames").glob("probe-*-up-before.png"))
+            # interact_stuck: enter 를 계속 눌러도 화면이 그대로 — 후보 키 5개를 다 시도하고 리포트에 표
+            seq["n"] = 0
+            p10 = ports([("press", {"key": "enter", "hold_ms": 100})] * 6)
+            p10["capture"] = p8["capture"]
+            run_session(p10, Path(d) / "r10", max_actions=6, clock=clock)
+            rows = [json.loads(x) for x in (Path(d) / "r10" / "log.jsonl").read_text(encoding="utf-8").splitlines()]
+            hit = [x for x in rows if "interact_stuck" in x["findings"]]
+            assert hit and set(hit[0]["probe"]) == set(INTERACT_PROBE_KEYS) and not any(hit[0]["probe"].values()), rows
+            rep = next((Path(d) / "bugs").glob("*interact-stuck*/report.md")).read_text(encoding="utf-8")
+            assert "## 키별 확인" in rep and "| enter | 그대로 |" in rep and "| x | 그대로 |" in rep and "none of enter/space/z/e/x" in rep, rep
             # 사람이 돌아옴: 3번째 수의 press 중 다른 앱이 앞으로 옴 → interrupted 로그, judge·리포트 없음, 정상 종료
             def rude(k, h):
                 if len(log) >= 2:

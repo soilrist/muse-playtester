@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from judge import Judge, Step
+from notes import summarize, write_notes
 from report import Bug, write_report
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -29,7 +30,8 @@ def default_ports():
     import decide
     import perceive
     return {"capture": capture.capture, "perceive": lambda p: perceive.perceive(p, SEE),
-            "decide": decide.decide, "press": act.press, "wait": act.wait}
+            "decide": decide.decide, "press": act.press, "wait": act.wait,
+            "summarize": summarize}
 
 
 def launch_game():
@@ -43,7 +45,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     max_sam = max_sam or _limit("PT_MAX_SAM_CALLS", 120)
     run_dir = Path(run_dir)
     (run_dir / "frames").mkdir(parents=True, exist_ok=True)
-    judge, moves, bug_paths, spark, sam = Judge(), [], [], 0, 0
+    judge, moves, bug_paths, spark, sam, notes = Judge(), [], [], 0, 0, []
     t0, reason, n = clock(), "action limit", 0
     try:
         for n in range(1, max_actions + 1):
@@ -75,6 +77,10 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                 moves.append(f"report_bug {args.get('title', '')}")
                 bug_paths.append(_report(Bug(args["title"], args["severity"], list(moves), "game behaves normally",
                                              args["title"], f"Spark: {args['why']}", [str(shot)], run_dir.name)))
+            elif tool == "note":
+                moves.append(f"note {args.get('kind', '')}")
+                notes.append({"step": n, "capture": str(shot), "kind": args.get("kind", ""),
+                              "what": args.get("what", ""), "why": args.get("why", "")})
             else:
                 moves.append(f"{tool} (ignored)")
             for f in judge.check(Step(clock() - t0, shot, keys, scene)):
@@ -82,6 +88,12 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                                              f.why, f"judge rule {f.rule}", f.frames, run_dir.name)))
     except Exception as e:  # BudgetExceeded 포함 — 어떤 이유든 기록은 남기고 끝낸다
         reason = f"stopped: {type(e).__name__}: {e}"
+    if notes and "summarize" in ports:  # 세션 끝에 Spark 1회로 소감 정리 (DESIGN §4.10)
+        try:
+            write_notes(run_dir, ports["summarize"](notes, moves))
+            spark += 1
+        except Exception as e:
+            reason += f" (notes failed: {type(e).__name__})"
     _summary(run_dir, reason, n, spark, sam, bug_paths)
     return reason, n
 
@@ -135,6 +147,14 @@ def selftest():
             assert (r, n) == ("sam call limit", 2), (r, n)
             r, n = run_session(ports([("report_bug", {"title": "Door", "severity": "low", "why": "w"})] + script), Path(d) / "r5")
             assert (Path(d) / "bugs" / "INDEX.md").is_file() and "Door" in (Path(d) / "bugs" / "INDEX.md").read_text(encoding="utf-8")
+            from notes import Improvement
+            note = ("note", {"kind": "ux", "what": "no hint", "why": "lost"})
+            p7 = ports([note] + script)
+            p7["summarize"] = lambda ns, mv: [Improvement("no hint", ns[0]["step"], ns[0]["capture"], "Games of this genre usually hint", "add hint")]
+            run_session(p7, Path(d) / "r7")
+            text = (Path(d) / "r7" / "playtest_notes.md").read_text(encoding="utf-8")
+            assert "1수째" in text and "no hint" in text, text
+            assert not (Path(d) / "r1" / "playtest_notes.md").exists()
             r, n = run_session(ports([]), Path(d) / "r6")  # decide 가 StopIteration → 기록 남기고 끝
             assert r.startswith("stopped:") and (Path(d) / "r6" / "summary.md").is_file(), r
         finally:

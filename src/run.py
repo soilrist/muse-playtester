@@ -1,4 +1,5 @@
 """세션 (DESIGN §4.8). 게임을 띄우고 perceive → decide → act → judge 를 상한까지 돌린다."""
+import json
 import os
 import shutil
 import subprocess
@@ -82,7 +83,8 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             sam += len(SEE)
             tool, args = ports["decide"](scene.summary(), moves, goal)
             spark += 1
-            keys = ()
+            keys, entry = (), {"step": n, "t": round(clock() - t0, 1), "scene": scene.summary(), "tool": tool,
+                               "args": args, "capture": str(shot), "findings": []}
             if tool == "press":
                 ports["press"](args["key"], args["hold_ms"])
                 keys = (args["key"],)
@@ -92,6 +94,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                 moves.append(f"wait {args['ms']}ms")
             elif tool == "done":
                 reason = f"done: {args.get('reason', '')}"
+                _log(run_dir, entry)
                 break
             elif tool == "report_bug":
                 moves.append(f"report_bug {args.get('title', '')}")
@@ -106,6 +109,8 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             for f in judge.check(Step(clock() - t0, shot, keys, scene)):
                 bug_paths.append(_report(Bug(f"{f.rule} at step {n}", "medium", list(moves), "game keeps responding",
                                              f.why, f"judge rule {f.rule}", f.frames, run_dir.name)))
+                entry["findings"].append(f.rule)
+            _log(run_dir, entry)
     except Exception as e:  # BudgetExceeded 포함 — 어떤 이유든 기록은 남기고 끝낸다
         reason = f"stopped: {type(e).__name__}: {e}"
     if notes and "summarize" in ports:  # 세션 끝에 Spark 1회로 소감 정리 (DESIGN §4.10)
@@ -118,12 +123,18 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     return reason, n
 
 
+def _log(run_dir, entry):
+    """수마다 한 줄: 수 번호·Scene 요약·Spark 툴 호출(이름+인자)·누른 키와 시간(args)·캡처 경로·judge 결과."""
+    with (Path(run_dir) / "log.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 def _report(bug):
     return write_report(bug, ROOT / "bugs")
 
 
 def _summary(run_dir, reason, n, spark, sam, bug_paths):
-    lines = ["# Session summary", "", f"- 종료 이유: {reason}", f"- 수: {n}", f"- Spark 호출: {spark}", f"- SAM 이미지: {sam}",
+    lines = ["# Session summary", "", f"- 종료 이유: {reason}", f"- 수: {n}", "- 수별 로그: [log.jsonl](log.jsonl)", f"- Spark 호출: {spark}", f"- SAM 이미지: {sam}",
              f"- 리포트: {len(bug_paths)}", *[f"  - {p}" for p in bug_paths], ""]
     (Path(run_dir) / "summary.md").write_text("\n".join(lines), encoding="utf-8")
 
@@ -164,6 +175,9 @@ def selftest():
             assert (r, n) == ("done: enough", 3), (r, n)
             assert log == [("press", "down", 100), ("wait", 1)], log
             assert "done: enough" in (Path(d) / "r1" / "summary.md").read_text(encoding="utf-8")
+            rows = [json.loads(x) for x in (Path(d) / "r1" / "log.jsonl").read_text(encoding="utf-8").splitlines()]
+            assert [x["step"] for x in rows] == [1, 2, 3] and rows[0]["tool"] == "press" and rows[0]["args"]["key"] == "down", rows
+            assert all(Path(x["capture"]).is_file() and x["scene"] for x in rows), rows
             r, n = run_session(ports([("wait", {"ms": 1})] * 9), Path(d) / "r2", max_actions=4)
             assert (r, n) == ("action limit", 4), (r, n)
             r, n = run_session(ports([("wait", {"ms": 1})] * 9), Path(d) / "r3", max_spark=2)

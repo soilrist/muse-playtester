@@ -81,6 +81,22 @@ def s1():
                        "PlayTester plays it for you."), 8
 
 
+def s_play():
+    """실측 60수를 빠르게 넘긴다 — 사람 손 없이 실제로 플레이하는 장면."""
+    pics = []
+    for e in log():
+        im, d = card()
+        paste(im, frame(Path(e["capture"]).name), 240, 0, 1440)
+        d.rectangle((0, 930, W, H), fill=BG)
+        args = " ".join(f"{v}" for k, v in e["args"].items() if k != "hold_ms")[:40]
+        d.text((60, 950), f"step {e['step']:>2}   {e['tool']} {args}", font=font(40, MONO), fill=ACC)
+        d.text((60, 1010), e["why"][:110], font=font(30), fill=FG)
+        d.text((1560, 950), f"{e['t'] // 60:.0f}:{e['t'] % 60:02.0f} / 12:54", font=font(30, MONO), fill=DIM)
+        pics.append((im, 1))
+    return pics, ("Here it is playing on its own: thirteen minutes, sped up. Every line at the bottom is one real key press and the reason the model chose it. "
+                  "It skips the intro, talks to the village chief, and keeps trying keys when the character stops responding."), 16
+
+
 def s2():
     im, d = card()
     title(d, "No game code. No hooks. Just the screen and real keys.")
@@ -224,7 +240,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         vlist, alist, total = [], [], 0.0
-        for si, scene in enumerate((s1, s2, s3, s4, s5, s6, s7, s8), 1):
+        for si, scene in enumerate((s1, s_play, s2, s3, s4, s5, s6, s7, s8), 1):
             pics, text, planned = scene()
             aiff = tmp / f"s{si}.mp3"
             sh(str(Path(sys.executable).parent / "edge-tts"), "--voice", VOICE, "--text", text, "--write-media", str(aiff))

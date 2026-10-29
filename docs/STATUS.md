@@ -7,14 +7,25 @@
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
 - 마일스톤: D6-02 README 완료(#38), D1 골격 3/3 완료, D2-02 SAM 10장 완료(go), D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: D5-02 60수 세션 3회 + 리포트 ≥3 (예산 $6 승인, 누적 약 $3.49). D5-01 은 #40 에서 60수 완주(`runs/20261029-013454`)했지만 jev NOT_SUPPORTED 라 `[ ]` 유지 — 감독이 summary.md 를 보고 닫아 달라
+- 다음 조각: D5-02 60수 세션 3회 + 리포트 ≥3 (예산 $6 승인, 누적 약 $4.26; #43 에서 2회째 완료, 1회 더). D5-01 은 #40 에서 60수 완주(`runs/20261029-013454`)했지만 jev NOT_SUPPORTED 라 `[ ]` 유지 — 감독이 summary.md 를 보고 닫아 달라
 - 막힌 것: 없음(예산 $6 승인됨). D2-01·D3-01 은 코드·실행은 확인했지만 jev 가 3·2번 NOT_SUPPORTED 라 `[ ]` 유지. 실측은 이제 Windows VM 안에서 `tools/vm/run_in_vm.sh` 로(사람 화면에 안 보임, #28). snapshot 이 바뀌면 `tools/vm/bootstrap.ps1` 재실행 필요
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
-- 비용: 상한 $6 안 (`logs/api_usage.csv` 합계 약 $3.49, 60수 1회 ≈ $0.77 → 2회 더 가능)
+- 비용: 상한 $6 안 (`logs/api_usage.csv` 합계 약 $4.26, 60수 1회 ≈ $0.77 → 1회 더 가능)
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #43 · 2026-10-29 · D5-02 60수 세션 2회째 (VM)
+- 계획: INBOX 결함(SAM 프롬프트)은 "60수 세션 먼저" 라 뒤로 · ROADMAP D5-02 · 코드 변경 없음, `PT_BUDGET_USD=6 tools/vm/run_in_vm.sh`
+- 한 것: 60수 완주 `runs/20261029-155401`. summary.md 를 읽음: 종료 이유 action limit, 수 60, Spark 60·SAM 120, 리포트 1건(`bugs/0046` same_screen). 소요 12분. 누적 비용 약 $4.26
+- 커밋: 이 커밋 (bugs/0046, INDEX.md)
+- 검사: 1층 `python3 tools/check_conventions.py` → 결과: 통과 (오류 0 / 경고 0 / 미정 숫자 0) / 2층 `session end: action limit (60 steps)` 출력은 봤지만 `jev evidence` NOT_SUPPORTED(p 0.17)라 통과라 쓰지 않음 / 3층 못 함(프레임 안 열어 봄)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 11, 12, 15
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음
+- INBOX 처리: 없음(SAM 결함은 D5-02 세션 뒤 처리 대상)
+- 다음: 세션 1회 더(리포트 누적 ≥3 은 이미 충족, runs 3개 필요 — 예산 $6 안에서 약 $0.77). 그 뒤 INBOX SAM 프롬프트 결함
 
 ## #42 · 2026-10-29 · INBOX 결함 — hp_bar_lost 대화창 오탐 (bugs/0041)
 - 계획: INBOX 결함 맨 위 · `src/judge.py` 만 · `dialog_open()` 픽셀 검사(아래 구역 75% 이상 어두움)로 대화창이 떠 있으면 hp_bar_lost 를 안 낸다, 0041 은 INDEX 에 false positive 표시

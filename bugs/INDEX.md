@@ -32,3 +32,4 @@
 | 0043 | [same_screen at step 35](0043-same-screen-at-step-35/report.md) | medium | 20261029-013454 |
 | 0044 | [same_screen at step 51](0044-same-screen-at-step-51/report.md) | medium | 20261029-013454 |
 | 0045 | [same_screen at step 56](0045-same-screen-at-step-56/report.md) | medium | 20261029-013454 |
+| 0046 | [same_screen at step 21](0046-same-screen-at-step-21/report.md) | medium | 20261029-155401 |

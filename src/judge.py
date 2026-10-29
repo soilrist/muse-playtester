@@ -83,7 +83,7 @@ class Judge:
         found += self._same_screen(step)
         found += self._interact_stuck(step)
         if prev:
-            for rule, kind in (("hp_bar_lost", "health bar"), ("player_lost", "player character")):
+            for rule, kind in (("hp_bar_lost", "health bar"), ("player_lost", "person")):
                 before, now = _count(prev, kind), _count(step, kind)
                 if rule == "hp_bar_lost" and dialog_open(step.image):
                     continue  # 대화창이 HUD 를 가린 정상 장면
@@ -171,16 +171,16 @@ def selftest():
         assert rules(talk + [Step(2, other, ("enter",)), Step(3, real, ("enter",)), Step(4, real)]) == [], "바뀐 눌림이 끼면 처음부터"
         sc = lambda **k: Scene(real, boxes=k)
         pb = [Box(0, 0, 1, 1)]
-        assert rules([Step(0, real, scene=sc(**{"player character": pb, "health bar": pb})),
-                      Step(1, other, scene=sc(**{"player character": [], "health bar": []}))]) == ["hp_bar_lost", "player_lost"]
+        assert rules([Step(0, real, scene=sc(**{"person": pb, "health bar": pb})),
+                      Step(1, other, scene=sc(**{"person": [], "health bar": []}))]) == ["hp_bar_lost", "player_lost"]
         talk19 = root / "bugs" / "0041-hp-bar-lost-at-step-19" / "frames"
         assert dialog_open(talk19 / "019.png") and not dialog_open(talk19 / "018.png"), "대화창 판정"
         assert rules([Step(0, talk19 / "018.png", scene=sc(**{"health bar": pb})),
                       Step(1, talk19 / "019.png", scene=sc(**{"health bar": []}))]) == [], "대화창 화면은 hp_bar_lost 아님"
         assert rules([Step(0, talk19 / "019.png", scene=sc(**{"health bar": pb})),
                       Step(1, talk19 / "018.png", scene=sc(**{"health bar": []}))]) == ["hp_bar_lost"], "대화창 없이 사라지면 그대로"
-        bad = Scene(real, boxes={"player character": []}, errors={"player character": "x"})
-        assert rules([Step(0, real, scene=sc(**{"player character": pb})), Step(1, other, scene=bad)]) == [], "인식 실패는 소실이 아님"
+        bad = Scene(real, boxes={"person": []}, errors={"person": "x"})
+        assert rules([Step(0, real, scene=sc(**{"person": pb})), Step(1, other, scene=bad)]) == [], "인식 실패는 소실이 아님"
     print("judge selftest ok")
 
 

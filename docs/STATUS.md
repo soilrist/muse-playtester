@@ -7,7 +7,7 @@
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
 - 마일스톤: D6-02 README 완료(#38), D1 골격 3/3 완료, D2-02 SAM 10장 완료(go), D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: D5-02 60수 세션 3회 + 리포트 ≥3 (예산 $6 승인, 누적 약 $4.26; #43 에서 2회째 완료, 1회 더). D5-01 은 #40 에서 60수 완주(`runs/20261029-013454`)했지만 jev NOT_SUPPORTED 라 `[ ]` 유지 — 감독이 summary.md 를 보고 닫아 달라
+- 다음 조각: D5-02 60수 세션 3회 + 리포트 ≥3 (예산 $6 승인, 누적 약 $4.26; #43 에서 2회째 완료, #44 에서 SAM·힌트 고침 → 3회째). D5-01 은 #40 에서 60수 완주(`runs/20261029-013454`)했지만 jev NOT_SUPPORTED 라 `[ ]` 유지 — 감독이 summary.md 를 보고 닫아 달라
 - 막힌 것: 없음(예산 $6 승인됨). D2-01·D3-01 은 코드·실행은 확인했지만 jev 가 3·2번 NOT_SUPPORTED 라 `[ ]` 유지. 실측은 이제 Windows VM 안에서 `tools/vm/run_in_vm.sh` 로(사람 화면에 안 보임, #28). snapshot 이 바뀌면 `tools/vm/bootstrap.ps1` 재실행 필요
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
@@ -15,6 +15,18 @@
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #44 · 2026-10-29 · INBOX 결함 — SAM 프롬프트 + 같은 키 막힘 힌트 + note 유도
+- 계획: INBOX 1번(맨 위 결함) · `src/perceive.py`·`run.py`·`judge.py`·`decide.py` · SAM 프롬프트를 040.png 로 실측해 고르고, 같은 키 same_screen 2번이면 힌트, decide 프롬프트에 note 유도
+- 한 것: 040.png 로 후보 실측 — `person` 6명(NPC 5+주인공), `house door` 3, `character` 8, `npc`·`dialog box`·`text box`·`window`·`protagonist`·`the hero` 는 0 또는 엉뚱. 그래서 SEE(run)를 `person`+`health bar` 로, perceive 기본 목록을 person/enemy/health bar/house door/chest/dialog box 로. judge player_lost 는 `person` 소실로 본다. same_screen 이 같은 키로 2번 나면 `blocked_hint` 를 decide 입력에 붙인다. decide 프롬프트에 (4) 주인공은 스크린샷에서 직접 찾아라, (5) 이상한 점은 note 로
+- 한계: SAM 이 주인공만 따로 못 잡는다(`player character` 는 인물 전부). 040.png 에는 실제로 대화창이 없어(상단 퀘스트 줄뿐) 대화창 1개 기준은 확인 못 함. NPC ≥4·문 ≥1 은 충족. 3회째 실측·note ≥1줄은 아직(다음 조각)
+- 커밋: 이 커밋
+- 검사: 1층 `python3 tools/check_conventions.py` → 결과: 통과 (오류 0 / 경고 0 / 미정 숫자 0) / 2층 `run selftest ok` (jev SUPPORTED p 0.89), `judge selftest ok`, perceive 040.png → `detected: 6 person, 2 health bar, 3 house door` / 3층 못 함(프레임 040.png 는 열어 봄: 마을, 로한·세라·두르간·핀·미라 5명과 집 3채, 대화창 없음)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 2, 11, 12, 15
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음
+- INBOX 처리: 결함 2건(SAM·same_screen / 01:40 SAM) 삭제. note 결함은 3회째 실측이 남아 유지
+- 다음: D5-02 3회째 60수 세션 (예산 약 $0.77 남음 안), note ≥1줄과 코너 갇힘 해소 확인
 
 ## #43 · 2026-10-29 · D5-02 60수 세션 2회째 (VM)
 - 계획: INBOX 결함(SAM 프롬프트)은 "60수 세션 먼저" 라 뒤로 · ROADMAP D5-02 · 코드 변경 없음, `PT_BUDGET_USD=6 tools/vm/run_in_vm.sh`

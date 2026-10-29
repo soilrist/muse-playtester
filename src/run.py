@@ -23,7 +23,7 @@ else:
     GODOT = Path.home() / "Applications/Godot.app/Contents/MacOS/Godot"
     GAME = Path.home() / "Git Project/zerostudyrpg-snapshot"
     SAVE_DIR = Path.home() / "Library/Application Support/Godot/app_userdata/심연의 숨결"  # 사람 세이브와 공유
-SEE = ["player character", "health bar"]  # judge 규칙이 쓰는 둘만 묻는다 (SAM 상한 120 = 60수 x 2장)
+SEE = ["person", "health bar"]  # judge 규칙이 쓰는 둘만 묻는다 (SAM 상한 120 = 60수 x 2장)
 GOAL = "explore the game and look for bugs"
 BOOT_SEC = 6
 PROBE_KEYS = ["up", "down", "left", "right", "w", "s", "a", "d"]  # 반대 방향이 이웃하게 — 벽에 막힌 쪽과 열린 쪽이 표에서 갈린다
@@ -79,6 +79,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     run_dir = Path(run_dir)
     (run_dir / "frames").mkdir(parents=True, exist_ok=True)
     judge, moves, bug_paths, spark, sam, notes = Judge(), [], [], 0, 0, []
+    stuck = {}
     hint, same_reported = "", False  # hint: 키별 확인에서 알아낸 관찰 결과를 이후 decide 입력에 붙인다
     t0, reason, n, entry = clock(), "action limit", 0, None
     try:
@@ -126,6 +127,10 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                 if f.rule == "same_screen":
                     table = probe_keys(ports, run_dir, n)
                     hint = probe_hint(table) or hint
+                    for k in keys:  # probe 의 '바뀜'은 방향만 바뀐 것일 수 있다 — 같은 키로 두 번 막히면 벽·맵 끝이다
+                        stuck[k] = stuck.get(k, 0) + 1
+                        if stuck[k] == 2:
+                            hint += blocked_hint(k)
                 elif f.rule == "interact_stuck":
                     table = probe_keys(ports, run_dir, n, INTERACT_PROBE_KEYS, True)
                     sev, expect = "low", "an interaction key opens a dialog or inspects something"
@@ -180,6 +185,11 @@ def probe_hint(table):
         return ""
     return (f" Observed: keys {', '.join(dead)} did NOT change the screen here (no response) — do not press them again; "
             f"use keys that did change it: {', '.join(live)}.")
+
+
+def blocked_hint(key):
+    """같은 키로 same_screen 이 두 번 났을 때 decide 에 붙일 문장."""
+    return f" '{key}' pressed here twice, screen unchanged — blocked (wall/map edge) here; go the other way."
 
 
 def _rel(run_dir, shot):
@@ -298,6 +308,7 @@ def selftest():
             # probe 결과가 다음 decide 입력에 들어가고, same_screen 리포트는 세션당 1개
             assert probe_hint([("right", False, "", ""), ("a", True, "", "")]).count("right") == 1 and "a." in probe_hint([("right", False, "", ""), ("a", True, "", "")])
             assert probe_hint([("right", False, "", "")]) == ""
+            assert "pressed here twice" in blocked_hint("a") and "'a'" in blocked_hint("a")
             assert len(list((Path(d) / "bugs").glob("*same-screen*"))) == 1
             seen, seq["n"] = [], 0
             probed = {"n": 0}

@@ -6,7 +6,8 @@ from pathlib import Path
 
 from meta_client import call_sam, output_text
 
-PROMPTS = ["player character", "enemy", "health bar", "door", "chest", "npc", "dialog box"]
+# SAM 은 "player character" 에 화면의 모든 인물(NPC 포함 8개)을, "npc"·"dialog box" 에 0개를 돌려줬다 → 040.png 에서 "person" 6명·"house door" 3개
+PROMPTS = ["person", "enemy", "health bar", "house door", "chest", "dialog box"]
 BOX_RE = re.compile(r"<\|box;([^|]*)\|>")
 
 

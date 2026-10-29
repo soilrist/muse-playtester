@@ -26,7 +26,9 @@ def decide(scene_text, recent, goal, image=None):
         "(menus usually take arrow keys + Enter). (2) If a dialog asks to delete, erase or overwrite "
         "(delete / overwrite / 지운다 / 삭제 / 덮어쓰기), NEVER confirm it. Any on-screen warning about erasing a save or 'press once more to proceed' means a destructive confirmation is pending: press esc to cancel it right away. "
         "(3) If an on-screen objective says to talk to, open or inspect something, walk next to it, face it, then press enter; "
-        "if the screen does not change, try space, z, e, x one at a time before walking away.\n"
+        "if the screen does not change, try space, z, e, x one at a time before walking away. "
+        "(4) Scene counts people (NPCs and the player together) — find the player in the screenshot yourself and judge directions from the player, not from an NPC. "
+        "(5) If you see anything odd or uncomfortable (a key that does nothing, a popup that appears suddenly, unreadable text), call note with it instead of ignoring it.\n"
         f"Goal: {goal}\nScene: {scene_text}\nRecent moves: {json.dumps(recent[-5:])}"
     )
     calls = function_calls(call_text(prompt, tools=TOOLS, image=image))

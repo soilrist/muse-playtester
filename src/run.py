@@ -15,6 +15,7 @@ from notes import summarize, write_notes
 from report import Bug, write_report
 
 ROOT = Path(__file__).resolve().parent.parent
+NOTE_EVERY = 10  # 막힘이 없어도 10수마다 한 번은 note 만 고르게 한다 (소감 0줄 방지, DESIGN §4.10)
 if sys.platform == "win32":  # Parallels Windows VM — tools/vm/bootstrap.ps1 이 깐 자리. 세이브는 VM 안 것이라 사람 세이브와 무관
     GODOT = Path(r"C:\pt\godot\godot.exe")
     GAME = Path(r"C:\pt\game")
@@ -96,7 +97,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             shot = ports["capture"](run_dir / "frames" / f"{n:03d}.png")
             scene = ports["perceive"](shot)
             sam += len(SEE)
-            tool, args = ports["decide"](scene.summary(), moves, goal + hint, shot, **({"only_note": True} if want_note else {}))
+            tool, args = ports["decide"](scene.summary(), moves, goal + hint, shot, **({"only_note": True} if want_note or n % NOTE_EVERY == 0 else {}))
             want_note = False
             spark += 1
             why = args.get("why") if tool in ("report_bug", "note") else args.pop("why", None)  # press·wait·done 의 why 는 로그 칸으로 옮긴다

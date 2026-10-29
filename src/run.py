@@ -81,6 +81,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     (run_dir / "frames").mkdir(parents=True, exist_ok=True)
     judge, moves, bug_paths, spark, sam, notes = Judge(), [], [], 0, 0, []
     stuck = {}
+    last_note = -NOTE_EVERY  # note 를 마지막으로 남긴 수 — 강제는 이 뒤 NOTE_EVERY 수가 지나야 다시 건다
     hint, same_reported, want_note = "", False, False  # hint: 키별 확인에서 알아낸 관찰 결과를 이후 decide 입력에 붙인다
     t0, reason, n, entry = clock(), "action limit", 0, None
     try:
@@ -97,7 +98,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             shot = ports["capture"](run_dir / "frames" / f"{n:03d}.png")
             scene = ports["perceive"](shot)
             sam += len(SEE)
-            tool, args = ports["decide"](scene.summary(), moves, goal + hint, shot, **({"only_note": True} if want_note or n % NOTE_EVERY == 0 else {}))
+            tool, args = ports["decide"](scene.summary(), moves, goal + hint, shot, **({"only_note": True} if (want_note or n % NOTE_EVERY == 0) and n - last_note >= NOTE_EVERY else {}))
             want_note = False
             spark += 1
             why = args.get("why") if tool in ("report_bug", "note") else args.pop("why", None)  # press·wait·done 의 why 는 로그 칸으로 옮긴다
@@ -119,6 +120,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                 bug_paths.append(_report(Bug(args["title"], args["severity"], list(moves), "game behaves normally",
                                              args["title"], f"Spark: {args['why']}", [str(shot)], run_dir.name)))
             elif tool == "note":
+                last_note = n
                 moves.append(f"note {args.get('kind', '')}")
                 notes.append({"step": n, "capture": _rel(run_dir, shot), "kind": args.get("kind", ""),
                               "what": args.get("what", ""), "why": args.get("why", "")})
@@ -346,6 +348,24 @@ def selftest():
             assert hit and set(hit[0]["probe"]) == set(INTERACT_PROBE_KEYS) and not any(hit[0]["probe"].values()), rows
             rep = next((Path(d) / "bugs").glob("*interact-stuck*/report.md")).read_text(encoding="utf-8")
             assert "## 키별 확인" in rep and "| enter | 그대로 |" in rep and "| x | 그대로 |" in rep and "none of enter/space/z/e/x" in rep, rep
+            # probe 가 구간을 끊어 same_screen 이 2수마다 나는 30수 — note 강제는 NOTE_EVERY 수 간격으로만
+            from judge import Finding
+            class EveryOther:
+                def __init__(self):
+                    self.k = 0
+
+                def check(self, step):
+                    self.k += 1
+                    return [Finding("same_screen", "fake", [str(step.image)])] if self.k % 2 == 0 else []
+            forced30, old_judge = [], Judge
+            globals()["Judge"] = EveryOther
+            try:
+                p12 = ports([("press", {"key": "down", "hold_ms": 100})] * 30)
+                p12["decide"] = lambda s, r, g, i=None, **kw: (forced30.append(kw.get("only_note", False)), note if kw.get("only_note") else ("press", {"key": "down", "hold_ms": 100}))[1]
+                run_session(p12, Path(d) / "r12", max_actions=30, clock=clock)
+            finally:
+                globals()["Judge"] = old_judge
+            assert len(forced30) == 30 and 1 <= sum(forced30) <= 3, forced30
             # 사람이 돌아옴: 3번째 수의 press 중 다른 앱이 앞으로 옴 → interrupted 로그, judge·리포트 없음, 정상 종료
             def rude(k, h):
                 if len(log) >= 2:

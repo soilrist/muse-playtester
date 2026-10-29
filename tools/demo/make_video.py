@@ -1,5 +1,6 @@
-"""3분 데모 영상 (D7, 대본 docs/specs/demo-script.md). 실측 run·리포트 + macOS say 내레이션 → demo/playtester-demo.mp4
+"""3분 데모 영상 (D7, 대본 docs/specs/demo-script.md). 실측 run·리포트 + edge-tts 내레이션 → demo/playtester-demo.mp4
 API 는 부르지 않는다 — SAM 박스는 tools/demo/boxes013.json 에 한 번 받아 둔 값.
+    .venv/bin/pip install edge-tts   # 한 번 (say 는 기계음이라 버림)
     .venv/bin/python tools/demo/make_video.py [runs/<시각>]
 """
 import json
@@ -19,6 +20,7 @@ W, H = 1920, 1080
 BG, FG, DIM, ACC, RED, GRN = "#101418", "#f2f2f2", "#9aa4ad", "#4da3ff", "#ff5a5a", "#4cd17a"
 F = "/System/Library/Fonts/Supplemental/Arial.ttf"
 FB = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+VOICE = "en-US-AndrewNeural"
 MONO = "/System/Library/Fonts/Menlo.ttc"
 KO = "/System/Library/Fonts/AppleSDGothicNeo.ttc"  # 한글이 섞인 문장(플레이 소감)
 
@@ -67,7 +69,7 @@ def log():
     return [json.loads(l) for l in (RUN / "log.jsonl").read_text(encoding="utf-8").splitlines()]
 
 
-# ── 장면들: (그림 목록[(이미지, 비중)], 내레이션, 대본 길이초) ──
+# ── 장면들: (그림 목록[(이미지, 비중)], 내레이션, 최소 길이초 — 그림 읽을 시간) ──
 
 def s1():
     im, d = card()
@@ -76,7 +78,7 @@ def s1():
     d.text((126, 510), "An AI playtester that only sees the screen.", font=font(52), fill=FG)
     d.text((126, 600), "Meta SAM 3.1  +  Muse Spark", font=font(40), fill=ACC)
     return [(im, 1)], ("Every indie developer ships bugs nobody found, because nobody played the game long enough. "
-                       "PlayTester plays it for you."), 15
+                       "PlayTester plays it for you."), 8
 
 
 def s2():
@@ -92,7 +94,7 @@ def s2():
         d.text((860, y + 22), s, font=font(42), fill=FG)
     d.text((820, 860), "repeat 60 times, fully unattended", font=font(34), fill=DIM)
     return [(im, 1)], ("It sees only the screen. No game code, no hooks. "
-                       "The game runs in a Windows virtual machine; PlayTester captures each frame and presses real keys."), 20
+                       "The game runs in a Windows virtual machine; PlayTester captures each frame and presses real keys."), 10
 
 
 def s3():
@@ -118,7 +120,7 @@ def s3():
             d.text((1250, y + 80), "   2 health bar, 3 house door\"", font=font(34, MONO), fill=FG)
         out.append((im, 1 if not draw_boxes else 4))
     return out, ("Meta's SAM 3.1 segments what is on screen. Here it finds six people, two health bars and three house doors. "
-                 "That becomes a short scene summary for the decision model."), 30
+                 "That becomes a short scene summary for the decision model."), 14
 
 
 def s4():
@@ -137,7 +139,7 @@ def s4():
         out.append((im, 1))
     return out, ("Muse Spark reads the scene summary and the screenshot, and picks one tool call per step: "
                  "press a key, wait, report a bug, or write a note. Every decision is logged with its reason. "
-                 "Here it walks toward the village chief to start the quest."), 35
+                 "Here it walks toward the village chief to start the quest."), 17
 
 
 def s5():
@@ -160,7 +162,7 @@ def s5():
         d2.text((1320, y), "screen changed" if ok else "no response", font=font(46), fill=GRN if ok else RED)
     return [(im, 1), (im2, 1.2)], ("At step nineteen the hero stops moving while it keeps pressing left. "
                                    "The judge flags the stuck screen, then probes each key one by one: "
-                                   "up and down still work, left and right do nothing."), 30
+                                   "up and down still work, left and right do nothing."), 14
 
 
 def s6():
@@ -171,7 +173,7 @@ def s6():
     d.text((80, 200), "Reproduce", font=font(40, FB), fill=ACC)
     for i, s in enumerate(steps):
         d.text((80 + (i // 10) * 420, 270 + (i % 10) * 56), f"{i + 1:>2}. {s}", font=font(32, MONO), fill=FG)
-    x, y = 960, 200
+    x, y = 960, 14
     for k, v, c in (
             ("Severity", "medium", FG),
             ("Expected", re.search(r"## 기대\n(.+)", t)[1], FG),
@@ -180,7 +182,7 @@ def s6():
         d.text((x, y), k, font=font(40, FB), fill=ACC)
         y = wrap(d, (x, y + 55), v, font(36), c, 880) + 30
     return [(im, 1)], ("It writes a report a human can reproduce: the exact key sequence, expected and actual behaviour, "
-                       "evidence frames, and the per-key probe table."), 25
+                       "evidence frames, and the per-key probe table."), 12
 
 
 def s7():
@@ -194,7 +196,7 @@ def s7():
         d.text((460, y), f"step {step}", font=font(30, FB), fill=DIM)
         yy = wrap(d, (460, y + 45), what, font(34, KO), FG, 1360)
         wrap(d, (460, yy + 5), "Suggestion: " + fix, font(30, KO), ACC, 1360)
-    return [(im, 1)], ("Notes become playtest feedback, each backed by a real scene and compared with what the genre usually does."), 15
+    return [(im, 1)], ("Notes become playtest feedback, each backed by a real scene and compared with what the genre usually does."), 10
 
 
 def s8():
@@ -205,7 +207,7 @@ def s8():
     d.text((120, 340), "SAM 3.1 sees  ·  Muse Spark decides  ·  real keys  ·  reproducible reports", font=font(40), fill=DIM)
     d.text((120, 560), "github.com/soilrist/muse-playtester", font=font(60, FB), fill=ACC)
     d.text((120, 650), "Open source", font=font(40), fill=DIM)
-    return [(im, 1)], f"{n} actions, about eighty cents. PlayTester is open source on GitHub.", 10
+    return [(im, 1)], f"{n} actions, about eighty cents. PlayTester is open source on GitHub.", 8
 
 
 def sh(*a):
@@ -224,9 +226,9 @@ def main():
         vlist, alist, total = [], [], 0.0
         for si, scene in enumerate((s1, s2, s3, s4, s5, s6, s7, s8), 1):
             pics, text, planned = scene()
-            aiff = tmp / f"s{si}.aiff"
-            sh("say", "-v", "Samantha", "-r", "165", "-o", str(aiff), text)
-            length = max(planned, dur(aiff) + 1.0)  # 내레이션이 길면 장면을 늘린다
+            aiff = tmp / f"s{si}.mp3"
+            sh(str(Path(sys.executable).parent / "edge-tts"), "--voice", VOICE, "--text", text, "--write-media", str(aiff))
+            length = max(planned, dur(aiff) + 1.5)  # 말이 끝나면 곧 다음 장면 — 빈 소리 구간을 안 만든다
             wav = tmp / f"s{si}.wav"
             sh("ffmpeg", "-y", "-i", str(aiff), "-af", f"adelay=400|400,apad", "-t", f"{length:.3f}", "-ar", "48000", "-ac", "2", str(wav))
             alist.append(f"file '{wav}'")

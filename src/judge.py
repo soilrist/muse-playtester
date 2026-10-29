@@ -12,6 +12,8 @@ PIXEL_DIFF = 24  # 픽셀 밝기 차이(0~255)가 이보다 크면 "바뀐 픽�
 SAME_PIXELS = 50  # 바뀐 픽셀이 이 이하면 같은 화면 (작은 스프라이트 하나 이동은 수천 개 — 평균으로는 안 보임)
 MOVE_KEYS = {"up", "down", "left", "right", "w", "a", "s", "d"}
 INTERACT_KEYS = {"enter", "space", "z", "e", "x"}
+DIALOG_DARK = 60  # 대화창 상자 판정: 밝기가 이보다 낮은 픽셀이
+DIALOG_FRAC = 0.75  # 아래 구역의 이 비율 이상이면 대화창(019.png 0.87, 평상시 화면 0.01~0.55)
 INTERACT_TRIES = 3  # 상호작용 키를 이만큼 눌렀는데 화면이 그대로면 "상호작용이 안 먹힌다"
 
 
@@ -42,6 +44,14 @@ def frames_same(a, b):
         return False
     diff = ImageChops.difference(ia, ib).point(lambda v: 255 if v > PIXEL_DIFF else 0)
     return ImageStat.Stat(diff).sum[0] / 255 <= SAME_PIXELS
+
+
+def dialog_open(path):
+    """화면 아래쪽에 어두운 대화창 상자가 떠 있는지 (SAM 이 대화창을 못 잡는 동안의 단순 픽셀 검사). 아래 1/4 구역의 75% 이상이 어두우면 참."""
+    im = Image.open(path).convert("L")
+    w, h = im.size
+    hist = im.crop((int(w * .03), int(h * .72), int(w * .80), int(h * .97))).histogram()
+    return sum(hist[:DIALOG_DARK]) >= DIALOG_FRAC * sum(hist)
 
 
 def _count(step, kind):
@@ -75,6 +85,8 @@ class Judge:
         if prev:
             for rule, kind in (("hp_bar_lost", "health bar"), ("player_lost", "player character")):
                 before, now = _count(prev, kind), _count(step, kind)
+                if rule == "hp_bar_lost" and dialog_open(step.image):
+                    continue  # 대화창이 HUD 를 가린 정상 장면
                 if before and now == 0:
                     found.append(Finding(rule, f"'{kind}' was seen on the previous step but not now",
                                          [str(prev.image), str(step.image)]))
@@ -161,6 +173,12 @@ def selftest():
         pb = [Box(0, 0, 1, 1)]
         assert rules([Step(0, real, scene=sc(**{"player character": pb, "health bar": pb})),
                       Step(1, other, scene=sc(**{"player character": [], "health bar": []}))]) == ["hp_bar_lost", "player_lost"]
+        talk19 = root / "bugs" / "0041-hp-bar-lost-at-step-19" / "frames"
+        assert dialog_open(talk19 / "019.png") and not dialog_open(talk19 / "018.png"), "대화창 판정"
+        assert rules([Step(0, talk19 / "018.png", scene=sc(**{"health bar": pb})),
+                      Step(1, talk19 / "019.png", scene=sc(**{"health bar": []}))]) == [], "대화창 화면은 hp_bar_lost 아님"
+        assert rules([Step(0, talk19 / "019.png", scene=sc(**{"health bar": pb})),
+                      Step(1, talk19 / "018.png", scene=sc(**{"health bar": []}))]) == ["hp_bar_lost"], "대화창 없이 사라지면 그대로"
         bad = Scene(real, boxes={"player character": []}, errors={"player character": "x"})
         assert rules([Step(0, real, scene=sc(**{"player character": pb})), Step(1, other, scene=bad)]) == [], "인식 실패는 소실이 아님"
     print("judge selftest ok")

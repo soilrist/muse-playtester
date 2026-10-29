@@ -16,6 +16,17 @@
 
 ---
 
+## #42 · 2026-10-29 · INBOX 결함 — hp_bar_lost 대화창 오탐 (bugs/0041)
+- 계획: INBOX 결함 맨 위 · `src/judge.py` 만 · `dialog_open()` 픽셀 검사(아래 구역 75% 이상 어두움)로 대화창이 떠 있으면 hp_bar_lost 를 안 낸다, 0041 은 INDEX 에 false positive 표시
+- 한 것: `dialog_open` 추가, hp_bar_lost 만 대화창이면 건너뜀(player_lost 는 그대로). 실측 밝기: 019.png 0.87 / 018.png 0.16 / 다른 캡처 0.01~0.55. 자체검사에 019 대화창 판정·hp_bar_lost 미발생·대화창 없을 때 발생 3개 assert 추가. bugs/INDEX.md 0041 제목에 `(false positive)`
+- 커밋: 이 커밋 (src/judge.py, bugs/INDEX.md, INBOX.md, STATUS.md)
+- 검사: 1층 `.venv/bin/python src/judge.py selftest` → `judge selftest ok`, `jev evidence` SUPPORTED(p 0.92) → 통과 / `python3 tools/check_conventions.py` → 결과: 통과 (오류 0 / 경고 0 / 미정 숫자 0) / 2층·3층 못 함(실제 run 에서 대화창 오탐이 사라지는지는 D5-02 에서 확인)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 3, 11, 12, 15
+- 가정한 것(🟡): 임계값 어두움<60·75%·구역 위치는 019.png 한 장 기준 / 물은 것(🔴): 없음
+- INBOX 처리: hp_bar_lost 결함 줄 삭제
+- 다음: INBOX 결함 SAM 프롬프트(60수 세션 뒤 하라고 했으므로 D5-02 이후), 그 전에 D5-02
+
 ## #41 · 2026-10-29 · INBOX 결함 — decide 가 probe 결과를 못 받음
 - 계획: INBOX 결함 맨 위(probe 무시) · `src/run.py` 만 · probe 에서 안 바뀐 키/바뀐 키를 `probe_hint` 로 문장화해 이후 decide 의 goal 뒤에 붙임, same_screen 리포트는 세션당 1개
 - 한 것: `probe_hint()` 추가, `hint` 를 다음 수 decide 입력에 연결, 두 번째 이후 same_screen 은 probe 만 하고 리포트 안 씀(log 의 probe 칸은 유지). 자체검사에 가짜 probe(right 무반응·a 반응) → decide 입력에 "did NOT change … right" 문구 assert, 리포트 1개 assert 추가

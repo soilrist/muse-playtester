@@ -16,6 +16,15 @@
 
 ---
 
+## #51 · 2026-10-29 · 할 일 소진 — 막힘 기록 후 STOP
+- 계획: ④-2-4 (INBOX 처리 줄 없음, ROADMAP `[ ]` 없음, DESIGN 에 안 쪼갠 내용 없음)
+- 한 것: 막힘: 사람 답 필요 1개 (1순위: D7 데모 영상 촬영·제출 — 마일스톤 1개가 기다림). 예산 $6.62/$7 이라 새 run 금지. `loop/STOP` 생성
+- 검사: 1층 못 함 / 2층 못 함 / 3층 못 함 (코드 변경 없음)
+- 점검한 규칙: 7, 9, 15
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음
+- INBOX 처리: 해당 없음
+- 다음: 감독이 D7 을 사람에게 묻고 INBOX 에 새 지시를 남기면 재개
+
 ## #50 · 2026-10-29 · INBOX 결함 — note 강제를 NOTE_EVERY 수 간격으로 제한
 - 계획: INBOX 1번(결함, note 강제가 끼임마다 반복) · 고칠 곳 `src/run.py` `run_session`·`selftest`
 - 한 것: `last_note`(초기 -NOTE_EVERY) 도입. only_note 강제는 (same_screen 직후 또는 NOTE_EVERY 배수 수) 이면서 `n - last_note >= NOTE_EVERY` 일 때만. 모델이 고른 note 도 `last_note` 갱신. selftest 에 '2수마다 same_screen 이 나는 가짜 judge 30수' 추가 — 강제 1~3번 단언. API 호출 없음(예산 $6.62/$7 유지)

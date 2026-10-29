@@ -11,15 +11,15 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {"ms": {"type": "integer"}, "why": WHY}, "required": ["ms", "why"]}},
     {"type": "function", "name": "report_bug", "description": "Report a bug you observed.",
      "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "severity": {"type": "string", "enum": ["low", "medium", "high"]}, "why": {"type": "string"}}, "required": ["title", "severity", "why"]}},
-    {"type": "function", "name": "note", "description": "Note a non-bug player impression.",
+    {"type": "function", "name": "note", "description": "Note anything odd, uncomfortable or unclear you noticed (a dead key, a confusing screen, a missing hint, a pacing or difficulty impression).",
      "parameters": {"type": "object", "properties": {"kind": {"type": "string", "enum": ["ux", "fun", "balance"]}, "what": {"type": "string"}, "why": {"type": "string"}}, "required": ["kind", "what", "why"]}},
     {"type": "function", "name": "done", "description": "End the session.",
      "parameters": {"type": "object", "properties": {"reason": {"type": "string"}, "why": WHY}, "required": ["reason", "why"]}},
 ]
 
 
-def decide(scene_text, recent, goal, image=None):
-    """(tool_name, args) 하나를 반환. recent 는 최근 5수 문자열 목록. image 는 현재 화면 캡처 경로."""
+def decide(scene_text, recent, goal, image=None, only_note=False):
+    """(tool_name, args) 하나를 반환. recent 는 최근 5수 문자열 목록. image 는 현재 화면 캡처 경로. only_note 면 note 툴만 준다(막힘 직후 소감을 반드시 받으려고)."""
     prompt = (
         "You are a game playtester. Choose exactly ONE tool call as your next action.\n"
         "Rules: (1) First read any control hints printed on the screen and use exactly those keys "
@@ -31,7 +31,9 @@ def decide(scene_text, recent, goal, image=None):
         "(5) If you see anything odd or uncomfortable (a key that does nothing, a popup that appears suddenly, unreadable text), call note with it instead of ignoring it.\n"
         f"Goal: {goal}\nScene: {scene_text}\nRecent moves: {json.dumps(recent[-5:])}"
     )
-    calls = function_calls(call_text(prompt, tools=TOOLS, image=image))
+    if only_note:
+        prompt += "\nThe last key did nothing here. This move you MUST call note: describe what looks odd or uncomfortable about it for a player."
+    calls = function_calls(call_text(prompt, tools=[t for t in TOOLS if t["name"] == "note"] if only_note else TOOLS, image=image))
     if not calls:
         raise RuntimeError("툴 호출 없음")
     return calls[0]

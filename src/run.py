@@ -80,7 +80,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     (run_dir / "frames").mkdir(parents=True, exist_ok=True)
     judge, moves, bug_paths, spark, sam, notes = Judge(), [], [], 0, 0, []
     stuck = {}
-    hint, same_reported = "", False  # hint: 키별 확인에서 알아낸 관찰 결과를 이후 decide 입력에 붙인다
+    hint, same_reported, want_note = "", False, False  # hint: 키별 확인에서 알아낸 관찰 결과를 이후 decide 입력에 붙인다
     t0, reason, n, entry = clock(), "action limit", 0, None
     try:
         for n in range(1, max_actions + 1):
@@ -96,7 +96,8 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             shot = ports["capture"](run_dir / "frames" / f"{n:03d}.png")
             scene = ports["perceive"](shot)
             sam += len(SEE)
-            tool, args = ports["decide"](scene.summary(), moves, goal + hint, shot)
+            tool, args = ports["decide"](scene.summary(), moves, goal + hint, shot, **({"only_note": True} if want_note else {}))
+            want_note = False
             spark += 1
             why = args.get("why") if tool in ("report_bug", "note") else args.pop("why", None)  # press·wait·done 의 why 는 로그 칸으로 옮긴다
             keys, entry = (), {"step": n, "t": round(clock() - t0, 1), "scene": scene.summary(), "tool": tool,
@@ -125,6 +126,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             for f in judge.check(Step(clock() - t0, shot, keys, scene)):
                 table, sev, expect = [], "medium", "game keeps responding"
                 if f.rule == "same_screen":
+                    want_note = True  # 다음 수는 note 만 고르게 한다 — 프롬프트 권유로는 3회 내내 0번이었다
                     table = probe_keys(ports, run_dir, n)
                     hint = probe_hint(table) or hint
                     for k in keys:  # probe 의 '바뀜'은 방향만 바뀐 것일 수 있다 — 같은 키로 두 번 막히면 벽·맵 끝이다
@@ -198,6 +200,12 @@ def _rel(run_dir, shot):
     return "/".join(parts[parts.index("frames"):]) if "frames" in parts else str(shot)
 
 
+def _rel_to(path, anchor):
+    """리포트 경로를 bugs/0047-x/report.md 꼴 상대경로로 — summary 에 VM 의 \\\\Mac\\… 절대경로가 남지 않게."""
+    parts = Path(str(path).replace("\\", "/")).parts
+    return "/".join(parts[len(parts) - 1 - parts[::-1].index(anchor):]) if anchor in parts else str(path)
+
+
 def _log(run_dir, entry):
     """수마다 한 줄: 수 번호·Scene 요약·Spark 툴 호출(이름+인자)·Spark 이유(why)·누른 키와 시간(args)·캡처 경로·judge 결과."""
     with (Path(run_dir) / "log.jsonl").open("a", encoding="utf-8") as f:
@@ -210,7 +218,7 @@ def _report(bug):
 
 def _summary(run_dir, reason, n, spark, sam, bug_paths):
     lines = ["# Session summary", "", f"- 종료 이유: {reason}", f"- 수: {n}", "- 수별 로그: [log.jsonl](log.jsonl)", f"- Spark 호출: {spark}", f"- SAM 이미지: {sam}",
-             f"- 리포트: {len(bug_paths)}", *[f"  - {p}" for p in bug_paths], ""]
+             f"- 리포트: {len(bug_paths)}", *[f"  - {_rel_to(p, 'bugs')}" for p in bug_paths], ""]
     (Path(run_dir) / "summary.md").write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -251,13 +259,14 @@ def selftest():
 
     def ports(tools):
         it = iter(tools)
-        return {"capture": lambda p: (Path(p).parent.mkdir(parents=True, exist_ok=True), shutil.copy(shot, p), Path(p))[2], "perceive": lambda p: Scene(p), "decide": lambda s, r, g, i=None: next(it),
+        return {"capture": lambda p: (Path(p).parent.mkdir(parents=True, exist_ok=True), shutil.copy(shot, p), Path(p))[2], "perceive": lambda p: Scene(p), "decide": lambda s, r, g, i=None, **kw: next(it),
                 "press": lambda k, h: log.append(("press", k, h)), "wait": lambda ms: log.append(("wait", ms))}
 
     old = report.ROOT
     with tempfile.TemporaryDirectory() as d:
         globals()["ROOT"] = Path(d)
         try:
+            assert _rel_to("\\\\Mac\\Home\\p\\bugs\\0047-x\\report.md", "bugs") == "bugs/0047-x/report.md"
             assert _rel("x", "\\\\Mac\\Home\\p\\runs\\r\\frames\\012.png") == "frames/012.png"
             r, n = run_session(ports(script), Path(d) / "r1")
             assert (r, n) == ("done: enough", 3), (r, n)
@@ -295,11 +304,14 @@ def selftest():
             def clock():
                 tick["t"] += 3
                 return tick["t"]
+            forced = []
             p8 = ports([("press", {"key": "down", "hold_ms": 100})] * 6)
+            p8["decide"] = (lambda it: lambda s, r, g, i=None, **kw: (forced.append(kw.get("only_note", False)), next(it))[1])(iter([("press", {"key": "down", "hold_ms": 100})] * 6))
             p8["capture"] = lambda p: (Path(p).parent.mkdir(parents=True, exist_ok=True), cap(p))[1]
             run_session(p8, Path(d) / "r8", max_actions=6, clock=clock)
             rows = [json.loads(x) for x in (Path(d) / "r8" / "log.jsonl").read_text(encoding="utf-8").splitlines()]
             hit = [x for x in rows if "same_screen" in x["findings"]]
+            assert True in forced and forced[0] is False and forced[rows.index(hit[0]) + 1] is True, forced
             assert hit and set(hit[0]["probe"]) == set(PROBE_KEYS) and not any(hit[0]["probe"].values()), rows
             assert all(x["why"] == "(no reason given)" for x in rows), rows
             rep = next((Path(d) / "bugs").glob("*same-screen*/report.md")).read_text(encoding="utf-8")
@@ -319,7 +331,7 @@ def selftest():
                 return p
             p11 = ports([("press", {"key": "right", "hold_ms": 100})] * 8)
             p11["capture"] = lambda p: (Path(p).parent.mkdir(parents=True, exist_ok=True), cap2(p))[1]
-            p11["decide"] = (lambda it: lambda s, r, g, i=None: (seen.append(g), next(it))[1])(iter([("press", {"key": "right", "hold_ms": 100})] * 8))
+            p11["decide"] = (lambda it: lambda s, r, g, i=None, **kw: (seen.append(g), next(it))[1])(iter([("press", {"key": "right", "hold_ms": 100})] * 8))
             run_session(p11, Path(d) / "r11", max_actions=8, clock=clock)
             rows = [json.loads(x) for x in (Path(d) / "r11" / "log.jsonl").read_text(encoding="utf-8").splitlines()]
             assert any("same_screen" in x["findings"] for x in rows) and any("did NOT change" in g and "right" in g for g in seen), (seen, rows)

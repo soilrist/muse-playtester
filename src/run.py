@@ -79,6 +79,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     run_dir = Path(run_dir)
     (run_dir / "frames").mkdir(parents=True, exist_ok=True)
     judge, moves, bug_paths, spark, sam, notes = Judge(), [], [], 0, 0, []
+    hint, same_reported = "", False  # hint: 키별 확인에서 알아낸 관찰 결과를 이후 decide 입력에 붙인다
     t0, reason, n, entry = clock(), "action limit", 0, None
     try:
         for n in range(1, max_actions + 1):
@@ -94,7 +95,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
             shot = ports["capture"](run_dir / "frames" / f"{n:03d}.png")
             scene = ports["perceive"](shot)
             sam += len(SEE)
-            tool, args = ports["decide"](scene.summary(), moves, goal, shot)
+            tool, args = ports["decide"](scene.summary(), moves, goal + hint, shot)
             spark += 1
             why = args.get("why") if tool in ("report_bug", "note") else args.pop("why", None)  # press·wait·done 의 why 는 로그 칸으로 옮긴다
             keys, entry = (), {"step": n, "t": round(clock() - t0, 1), "scene": scene.summary(), "tool": tool,
@@ -124,12 +125,18 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                 table, sev, expect = [], "medium", "game keeps responding"
                 if f.rule == "same_screen":
                     table = probe_keys(ports, run_dir, n)
+                    hint = probe_hint(table) or hint
                 elif f.rule == "interact_stuck":
                     table = probe_keys(ports, run_dir, n, INTERACT_PROBE_KEYS, True)
                     sev, expect = "low", "an interaction key opens a dialog or inspects something"
                     worked = [k for k, changed, _, _ in table if changed]
                     moves.append(f"hint: '{worked[0]}' changes the screen when interacting — use it" if worked else
                                  "hint: none of enter/space/z/e/x changed the screen here — move closer or try another goal")
+                if f.rule == "same_screen" and same_reported:  # 같은 원인(키 무반응) 리포트는 세션당 1개
+                    entry["findings"].append(f.rule)
+                    entry.setdefault("probe", {}).update({k: changed for k, changed, _, _ in table})
+                    continue
+                same_reported = same_reported or f.rule == "same_screen"
                 bug_paths.append(_report(Bug(f"{f.rule} at step {n}", sev, list(moves), expect,
                                              f.why, f"judge rule {f.rule}", f.frames, run_dir.name, table)))
                 entry["findings"].append(f.rule)
@@ -163,6 +170,16 @@ def probe_keys(ports, run_dir, n, keys=PROBE_KEYS, stop_on_change=False):
         if stop_on_change and table[-1][1]:
             break
     return table
+
+
+def probe_hint(table):
+    """키별 확인 표에서 안 바뀐 키와 바뀐 키를 decide 가 읽을 문장으로. 바뀐 키가 없거나 안 바뀐 키가 없으면 ''."""
+    dead = [k for k, changed, _, _ in table if not changed]
+    live = [k for k, changed, _, _ in table if changed]
+    if not dead or not live:
+        return ""
+    return (f" Observed: keys {', '.join(dead)} did NOT change the screen here (no response) — do not press them again; "
+            f"use keys that did change it: {', '.join(live)}.")
 
 
 def _rel(run_dir, shot):
@@ -278,6 +295,23 @@ def selftest():
             rep = next((Path(d) / "bugs").glob("*same-screen*/report.md")).read_text(encoding="utf-8")
             assert "## 키별 확인" in rep and "| up | 그대로 |" in rep and "| d | 그대로 |" in rep, rep
             assert any((next((Path(d) / "bugs").glob("*same-screen*")) / "frames").glob("probe-*-up-before.png"))
+            # probe 결과가 다음 decide 입력에 들어가고, same_screen 리포트는 세션당 1개
+            assert probe_hint([("right", False, "", ""), ("a", True, "", "")]).count("right") == 1 and "a." in probe_hint([("right", False, "", ""), ("a", True, "", "")])
+            assert probe_hint([("right", False, "", "")]) == ""
+            assert len(list((Path(d) / "bugs").glob("*same-screen*"))) == 1
+            seen, seq["n"] = [], 0
+            probed = {"n": 0}
+
+            def cap2(p):  # 1수 다른 화면, 이후 같은 화면. 'a' 를 누른 뒤 그림만 바꿔 a 만 '바뀜'으로 만든다
+                probed["n"] += 1
+                shutil.copy2(Path(shot).with_name("priv-b0.png") if probed["n"] == 1 or str(p).endswith("probe-004-a-after.png") or str(p).endswith("probe-005-a-after.png") or str(p).endswith("probe-006-a-after.png") else shot, p)
+                return p
+            p11 = ports([("press", {"key": "right", "hold_ms": 100})] * 8)
+            p11["capture"] = lambda p: (Path(p).parent.mkdir(parents=True, exist_ok=True), cap2(p))[1]
+            p11["decide"] = (lambda it: lambda s, r, g, i=None: (seen.append(g), next(it))[1])(iter([("press", {"key": "right", "hold_ms": 100})] * 8))
+            run_session(p11, Path(d) / "r11", max_actions=8, clock=clock)
+            rows = [json.loads(x) for x in (Path(d) / "r11" / "log.jsonl").read_text(encoding="utf-8").splitlines()]
+            assert any("same_screen" in x["findings"] for x in rows) and any("did NOT change" in g and "right" in g for g in seen), (seen, rows)
             # interact_stuck: enter 를 계속 눌러도 화면이 그대로 — 후보 키 5개를 다 시도하고 리포트에 표
             seq["n"] = 0
             p10 = ports([("press", {"key": "enter", "hold_ms": 100})] * 6)

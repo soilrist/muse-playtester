@@ -16,6 +16,17 @@
 
 ---
 
+## #41 · 2026-10-29 · INBOX 결함 — decide 가 probe 결과를 못 받음
+- 계획: INBOX 결함 맨 위(probe 무시) · `src/run.py` 만 · probe 에서 안 바뀐 키/바뀐 키를 `probe_hint` 로 문장화해 이후 decide 의 goal 뒤에 붙임, same_screen 리포트는 세션당 1개
+- 한 것: `probe_hint()` 추가, `hint` 를 다음 수 decide 입력에 연결, 두 번째 이후 same_screen 은 probe 만 하고 리포트 안 씀(log 의 probe 칸은 유지). 자체검사에 가짜 probe(right 무반응·a 반응) → decide 입력에 "did NOT change … right" 문구 assert, 리포트 1개 assert 추가
+- 커밋: 이 커밋 (src/run.py, INBOX.md, STATUS.md)
+- 검사: 1층 `.venv/bin/python src/run.py selftest` → `run selftest ok`, `jev evidence` SUPPORTED(p 0.92) → 통과 / `python3 tools/check_conventions.py` → 결과: 통과 (오류 0 / 경고 0 / 미정 숫자 0) / 2층·3층 못 함(다음 60수 run 에서 `right` 가 probe 뒤 사라지는지는 아직 실측 안 함 — 감독/D5-02 에서 확인)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 3, 11, 12, 15
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음
+- INBOX 처리: probe 결함 줄 삭제(자체검사 assert 로 검증, 실측 검증은 D5-02 에서)
+- 다음: INBOX 결함 hp_bar_lost 대화창 오탐(bugs/0041)
+
 ## #40 · 2026-10-29 · D5-01 60수 세션 1회 (VM)
 - 계획: INBOX 지시(예산 $6, D5-01·02 를 VM 으로) 맨 위 · 코드 변경 없음, `PT_BUDGET_USD=6 tools/vm/run_in_vm.sh` 실행 (loop/env.sh 는 export 3 이 남아 있어 명령에서 6 으로 덮음 — 규칙상 안 고침, 감독 확인 요망)
 - 한 것: VM 60수 완주 `runs/20261029-013454`. summary.md 를 직접 읽음: 종료 이유 action limit, 수 60, Spark 60·SAM 120, 리포트 5건(`bugs/0041` hp_bar_lost, `0042`~`0045` same_screen). log.jsonl 60줄. 세션 비용 ≈ $0.77(누적 $2.72 → $3.49)

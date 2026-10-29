@@ -27,7 +27,7 @@
 | 0038 | [same_screen at step 33](0038-same-screen-at-step-33/report.md) | medium | 20261028-224621 |
 | 0039 | [interact_stuck at step 38](0039-interact-stuck-at-step-38/report.md) | low | 20261028-224621 |
 | 0040 | [hp_bar_lost at step 39](0040-hp-bar-lost-at-step-39/report.md) | medium | 20261028-224621 |
-| 0041 | [hp_bar_lost at step 19](0041-hp-bar-lost-at-step-19/report.md) | medium | 20261029-013454 |
+| 0041 | [hp_bar_lost at step 19 (false positive)](0041-hp-bar-lost-at-step-19/report.md) | medium | 20261029-013454 |
 | 0042 | [same_screen at step 33](0042-same-screen-at-step-33/report.md) | medium | 20261029-013454 |
 | 0043 | [same_screen at step 35](0043-same-screen-at-step-35/report.md) | medium | 20261029-013454 |
 | 0044 | [same_screen at step 51](0044-same-screen-at-step-51/report.md) | medium | 20261029-013454 |

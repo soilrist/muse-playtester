@@ -7,14 +7,26 @@
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
 - 마일스톤: D6-02 README 완료(#38), D1 골격 3/3 완료, D2-02 SAM 10장 완료(go), D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: INBOX note 결함 — 프롬프트로는 안 쓰임, 구조로 강제(#45). D5-02 (예산 $6 승인, 누적 약 $5.29; #45 에서 3회째 완료 — runs 13·bugs 다수, jev NOT_SUPPORTED 라 `[ ]` 유지). D5-01 은 #40 에서 60수 완주(`runs/20261029-013454`)했지만 jev NOT_SUPPORTED 라 `[ ]` 유지 — 감독이 summary.md 를 보고 닫아 달라
+- 다음 조각: INBOX note 결함 — #46 에서 구조 강제로 20수 run note 2줄 확인(감독 판정 대기), summary 경로는 리포트 있는 run 에서 확인 필요. D5-02 (예산 $6 승인, 누적 약 $5.29; #45 에서 3회째 완료 — runs 13·bugs 다수, jev NOT_SUPPORTED 라 `[ ]` 유지). D5-01 은 #40 에서 60수 완주(`runs/20261029-013454`)했지만 jev NOT_SUPPORTED 라 `[ ]` 유지 — 감독이 summary.md 를 보고 닫아 달라
 - 막힌 것: 없음(예산 $6 승인됨). D2-01·D3-01 은 코드·실행은 확인했지만 jev 가 3·2번 NOT_SUPPORTED 라 `[ ]` 유지. 실측은 이제 Windows VM 안에서 `tools/vm/run_in_vm.sh` 로(사람 화면에 안 보임, #28). snapshot 이 바뀌면 `tools/vm/bootstrap.ps1` 재실행 필요
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
-- 비용: 상한 $6 안 (`logs/api_usage.csv` 합계 약 $5.29, 60수 1회 ≈ $0.77 → 상한 근접)
+- 비용: 상한 $6 안 (`logs/api_usage.csv` 합계 약 $5.80, 60수 1회 ≈ $0.77 → 60수는 못 돌림)
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #46 · 2026-10-29 · INBOX 결함 — note 강제 구조 + summary 경로 상대화
+- 계획: INBOX 1·2번(결함) · `src/decide.py`(note 설명 확장, `only_note` 인자 = note 툴만 제공) · `src/run.py`(same_screen 직후 수와 10수마다 note 강제, `_rel_to` 로 summary 리포트 경로 상대화)
+- 한 것: 프롬프트 권유가 3회 내내 안 먹어 구조로 바꿨다. 20수 run 1회(`runs/20261029-165647`)는 same_screen 이 안 나서 강제가 안 걸려 note 0줄 → `NOTE_EVERY=10` 추가 후 재실행 `runs/20261029-170036`: log.jsonl 에 `"tool": "note"` 2줄(10수·20수, capture 포함) + playtest_notes.md 생성. 누적 비용 약 $5.80 (상한 $6)
+- 한계: summary 경로는 두 run 모두 리포트 0건이라 `\\Mac` 0회가 "리포트 줄이 없어서"일 뿐 실제 확인 못 함 — 자체검사(`_rel_to`)만 통과. 강제 note 는 same_screen 이 아니어도 걸려, 모델이 억지 소감을 쓸 수 있다
+- 커밋: b68a73e, d367412
+- 검사: 1층 `python3 tools/check_conventions.py` → 결과: 통과 (오류 0 / 경고 0 / 미정 숫자 0) / 2층 `run selftest ok` (jev SUPPORTED p 0.91) — 실측 note 2줄은 jev NOT_SUPPORTED(p 0.1)라 통과라 쓰지 않고 관찰로만 적음 / 3층 못 함(프레임 안 열어 봄)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 2, 11, 12, 15
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음
+- INBOX 처리: 두 결함 모두 유지 — note 는 감독이 log.jsonl 보고 닫기, summary 경로는 리포트가 있는 run 에서 확인 필요
+- 다음: 감독이 note 결함 판정. summary 경로는 다음 실측 run(리포트 ≥1건) 때 확인
 
 ## #45 · 2026-10-29 · D5-02 60수 세션 3회째 (VM) — note 여전히 0줄
 - 계획: INBOX 결함(note 유도) 검증 + ROADMAP D5-02 · 코드 변경 없음, `PT_BUDGET_USD=6 tools/vm/run_in_vm.sh` (#44 에서 프롬프트 (5) 이미 추가됨)

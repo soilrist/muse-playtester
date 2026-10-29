@@ -7,14 +7,25 @@
 ## 지금 상태 (루프가 매 바퀴 고쳐 씀, 감독이 바로잡을 수 있음)
 - 마일스톤: D6-02 README 완료(#38), D1 골격 3/3 완료, D2-02 SAM 10장 완료(go), D2-01 perceive·D3-01 decide 코드 완료(2층 jev 미확인), D3-02 act 완료(키 입력 후 화면 바뀜 확인), D4-01 judge·D4-02 report·D6-04 notes·D6-01 viewer·D6-03 영상 대본 완료, D3-03 실측 완료(#25, log.jsonl 10줄; #26 에서 why 칸·키별 확인 코드 추가), D5-03 note→playtest_notes 연결 코드 완료(실측 못 함)
 - 브랜치: develop
-- 다음 조각: D5-02 60수 세션 3회 + 리포트 ≥3 (예산 $6 승인, 누적 약 $4.26; #43 에서 2회째 완료, #44 에서 SAM·힌트 고침 → 3회째). D5-01 은 #40 에서 60수 완주(`runs/20261029-013454`)했지만 jev NOT_SUPPORTED 라 `[ ]` 유지 — 감독이 summary.md 를 보고 닫아 달라
+- 다음 조각: INBOX note 결함 — 프롬프트로는 안 쓰임, 구조로 강제(#45). D5-02 (예산 $6 승인, 누적 약 $5.29; #45 에서 3회째 완료 — runs 13·bugs 다수, jev NOT_SUPPORTED 라 `[ ]` 유지). D5-01 은 #40 에서 60수 완주(`runs/20261029-013454`)했지만 jev NOT_SUPPORTED 라 `[ ]` 유지 — 감독이 summary.md 를 보고 닫아 달라
 - 막힌 것: 없음(예산 $6 승인됨). D2-01·D3-01 은 코드·실행은 확인했지만 jev 가 3·2번 NOT_SUPPORTED 라 `[ ]` 유지. 실측은 이제 Windows VM 안에서 `tools/vm/run_in_vm.sh` 로(사람 화면에 안 보임, #28). snapshot 이 바뀌면 `tools/vm/bootstrap.ps1` 재실행 필요
 - 사람만 할 수 있는 것(`[!] 사람:`): D7 데모 영상 촬영·제출 / 접근성 권한(키 입력 첫 실행 때)
 - 사람 답 기다리는 것: 🔴 0개 / 🟡 가정 0개 / 안 채운 숫자 0개
-- 비용: 상한 $6 안 (`logs/api_usage.csv` 합계 약 $4.26, 60수 1회 ≈ $0.77 → 1회 더 가능)
+- 비용: 상한 $6 안 (`logs/api_usage.csv` 합계 약 $5.29, 60수 1회 ≈ $0.77 → 상한 근접)
 - 감독이 눈으로 봐야 할 것(일꾼이 `못 함 — 감독` 으로 넘긴 칸): 없음
 
 ---
+
+## #45 · 2026-10-29 · D5-02 60수 세션 3회째 (VM) — note 여전히 0줄
+- 계획: INBOX 결함(note 유도) 검증 + ROADMAP D5-02 · 코드 변경 없음, `PT_BUDGET_USD=6 tools/vm/run_in_vm.sh` (#44 에서 프롬프트 (5) 이미 추가됨)
+- 한 것: 60수 완주 `runs/20261029-163724`. summary.md: 종료 이유 action limit, 수 60, Spark 60·SAM 120, 리포트 1건(`bugs/0047` same_screen at step 14). log.jsonl 의 tool 집계 `60 "tool": "press"` — **note 0줄**, 프롬프트 (5) 를 넣고도 안 쓰임. 누적 비용 약 $5.29 (상한 $6, 한 세션 ≈$0.77 이라 4회째는 상한을 넘을 수 있음)
+- 커밋: 이 커밋 (bugs/0047, INDEX.md)
+- 검사: 1층 `python3 tools/check_conventions.py` → 결과: 통과 (오류 0 / 경고 0 / 미정 숫자 0) / 2층 `session end: action limit (60 steps)` 출력은 봤지만 `jev evidence` NOT_SUPPORTED(p 0.09)라 통과라 쓰지 않음 / 3층 못 함(프레임 안 열어 봄)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 11, 12, 15
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음
+- INBOX 처리: note 결함 유지(검증 실패). 한 수에 툴 하나만 고르는 구조라 모델이 늘 press 를 고른다 — 다음 바퀴는 프롬프트 말고 구조로: N수마다(또는 same_screen·blocked_hint 때) 이번 수는 note 만 고르게 tool_choice/툴 목록을 note 로 제한하는 안
+- 다음: note 강제 구조 변경(decide·run) + 자체검사. 실측은 예산 약 $0.71 이라 증액(🔴) 또는 SAM 호출을 줄인 짧은 세션(PT_MAX_ACTIONS=20)으로
 
 ## #44 · 2026-10-29 · INBOX 결함 — SAM 프롬프트 + 같은 키 막힘 힌트 + note 유도
 - 계획: INBOX 1번(맨 위 결함) · `src/perceive.py`·`run.py`·`judge.py`·`decide.py` · SAM 프롬프트를 040.png 로 실측해 고르고, 같은 키 same_screen 2번이면 힌트, decide 프롬프트에 note 유도

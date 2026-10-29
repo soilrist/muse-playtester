@@ -43,7 +43,7 @@ def _read_rows():
 
 def _check_limits(model):
     rows = _read_rows()
-    if sum(float(r["cost_usd"]) for r in rows) >= _limit("PT_BUDGET_USD", 6):
+    if sum(float(r["cost_usd"]) for r in rows) >= _limit("PT_BUDGET_USD", 7):
         raise BudgetExceeded("PT_BUDGET_USD exceeded")
     # 세션 상한은 run.py 가 세션별로 센다; 여기서는 누적 예산만 막는다.
 

@@ -115,3 +115,6 @@ backups/
 
 # Windows VM 실행 대리인 주고받는 곳
 /vm/
+
+# 데모 영상 산출물 (tools/demo/make_video.py)
+/demo/

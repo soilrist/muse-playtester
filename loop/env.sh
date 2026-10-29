@@ -79,4 +79,4 @@ export LC_ALL="${LC_ALL:-en_US.UTF-8}"
 export PT_MAX_ACTIONS=60        # 세션당 행동 수
 export PT_MAX_SAM_CALLS=120     # 세션당 SAM 이미지
 export PT_MAX_SPARK_CALLS=80    # 세션당 Spark 호출
-export PT_BUDGET_USD=7          # api_usage.csv 누적 상한 — 2026-10-29 형 승인으로 $3→$6→$7
+export PT_BUDGET_USD=10         # api_usage.csv 누적 상한 — 사람 승인으로 $3→$6→$7(10/29)→$10(10/30)

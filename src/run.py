@@ -10,7 +10,8 @@ from datetime import datetime
 from pathlib import Path
 
 from capture import Interrupted, human_idle_seconds
-from judge import Judge, Step, frames_same
+from judge import MOVE_KEYS, Judge, Step, frames_same
+from perceive import track
 from notes import summarize, write_notes
 from report import Bug, write_report
 
@@ -84,6 +85,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     last_note = -NOTE_EVERY  # note 를 마지막으로 남긴 수 — 강제는 이 뒤 NOTE_EVERY 수가 지나야 다시 건다
     hint, same_reported, want_note = "", False, False  # hint: 키별 확인에서 알아낸 관찰 결과를 이후 decide 입력에 붙인다
     t0, reason, n, entry = clock(), "action limit", 0, None
+    prev_scene, prev_keys = None, ()  # 플레이어 추적용: 지난 수의 인식 결과와 누른 키
     try:
         for n in range(1, max_actions + 1):
             entry = None
@@ -97,13 +99,17 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                 break
             shot = ports["capture"](run_dir / "frames" / f"{n:03d}.png")
             scene = ports["perceive"](shot)
+            track(prev_scene, scene, bool(set(k.lower() for k in prev_keys) & MOVE_KEYS))
+            prev_scene = scene
             sam += len(SEE)
             tool, args = ports["decide"](scene.summary(), moves, goal + hint, shot, **({"only_note": True} if (want_note or n % NOTE_EVERY == 0) and n - last_note >= NOTE_EVERY else {}))
             want_note = False
             spark += 1
             why = args.get("why") if tool in ("report_bug", "note") else args.pop("why", None)  # press·wait·done 의 why 는 로그 칸으로 옮긴다
             keys, entry = (), {"step": n, "t": round(clock() - t0, 1), "scene": scene.summary(), "tool": tool,
-                               "args": args, "why": why or "(no reason given)", "capture": _rel(run_dir, shot), "findings": []}
+                               "args": args, "why": why or "(no reason given)", "capture": _rel(run_dir, shot), "findings": [],
+                               "boxes": {k: [[b.x1, b.y1, b.x2, b.y2] for b in v] for k, v in scene.boxes.items()},
+                               "player": [scene.player.x1, scene.player.y1, scene.player.x2, scene.player.y2] if scene.player else None}
             if tool == "press":
                 ports["press"](args["key"], args["hold_ms"])
                 keys = (args["key"],)
@@ -126,6 +132,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                               "what": args.get("what", ""), "why": args.get("why", "")})
             else:
                 moves.append(f"{tool} (ignored)")
+            prev_keys = keys
             for f in judge.check(Step(clock() - t0, shot, keys, scene)):
                 table, sev, expect = [], "medium", "game keeps responding"
                 if f.rule == "same_screen":

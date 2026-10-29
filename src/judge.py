@@ -14,7 +14,9 @@ MOVE_KEYS = {"up", "down", "left", "right", "w", "a", "s", "d"}
 INTERACT_KEYS = {"enter", "space", "z", "e", "x"}
 DIALOG_DARK = 60  # 대화창 상자 판정: 밝기가 이보다 낮은 픽셀이
 DIALOG_FRAC = 0.75  # 아래 구역의 이 비율 이상이면 대화창(019.png 0.87, 평상시 화면 0.01~0.55)
-INTERACT_TRIES = 3  # 상호작용 키를 이만큼 눌렀는데 화면이 그대로면 "상호작용이 안 먹힌다"
+INTERACT_TRIES = 3
+PLAYER_TRIES = 3  # SAM 이 고른 플레이어가 이동 키 이만큼(2방향 이상) 눌러도 제자리면 "못 움직임" — 물·NPC 애니메이션으로 픽셀 비교가 안 통할 때
+DIRECTION = {"w": "up", "a": "left", "s": "down", "d": "right"}  # 상호작용 키를 이만큼 눌렀는데 화면이 그대로면 "상호작용이 안 먹힌다"
 
 
 @dataclass
@@ -68,6 +70,7 @@ class Judge:
         self._reported_from = None  # 이미 리포트한 같은 화면 구간의 첫 수
         self._interact_idle = []  # 화면을 못 바꾼 상호작용 눌림(그 수) 목록 — 바뀐 눌림이 나오면 비움
         self._interact_fired = False  # 이 목록에서 이미 리포트했는가
+        self._stuck_at = None  # 이미 리포트한 플레이어 제자리 위치
         self._responded = False  # 이동 키를 누른 뒤 화면이 바뀐 적이 있는가 (없으면 아직 타이틀·메뉴)
 
     def check(self, step):
@@ -82,6 +85,8 @@ class Judge:
                                  [str(prev.image), str(step.image)]))
         found += self._same_screen(step)
         found += self._interact_stuck(step)
+        if not any(f.rule == "same_screen" for f in found):
+            found += self._player_stuck(step)
         if prev:
             for rule, kind in (("hp_bar_lost", "health bar"), ("player_lost", "person")):
                 before, now = _count(prev, kind), _count(step, kind)
@@ -112,6 +117,24 @@ class Judge:
         return [Finding("same_screen", f"screen unchanged for {run[-1].t - run[0].t:.0f}s while move keys were pressed",
                         [str(run[0].image), str(run[-1].image)])]
 
+
+    def _player_stuck(self, step):
+        """SAM 플레이어 박스가 마지막 PLAYER_TRIES 번의 이동 키 눌림(2방향 이상)마다 거의 안 움직였으면 끼임. 위치마다 한 번, 대화창이 떠 있으면 안 쏜다."""
+        pairs = [(a, b) for a, b in zip(self.steps, self.steps[1:]) if set(k.lower() for k in a.keys) & MOVE_KEYS][-PLAYER_TRIES:]
+        if len(pairs) < PLAYER_TRIES or pairs[-1][1] is not step or dialog_open(step.image):
+            return []
+        if any(a.scene is None or b.scene is None or not a.scene.player or not b.scene.player for a, b in pairs):
+            return []
+        dirs = {DIRECTION.get(k.lower(), k.lower()) for a, _ in pairs for k in a.keys}
+        moved = lambda a, b: max(abs(p - q) for p, q in zip(a.scene.player.center(), b.scene.player.center()))
+        if len(dirs) < 2 or any(moved(a, b) > (b.scene.player.y2 - b.scene.player.y1) * 0.25 for a, b in pairs):
+            return []
+        at = tuple(round(v / 16) for v in step.scene.player.center())
+        if at == self._stuck_at:
+            return []
+        self._stuck_at = at
+        return [Finding("player_stuck", f"SAM-tracked player box stayed at {step.scene.player.center()} after {', '.join(sorted(dirs))} key presses",
+                        [str(pairs[0][0].image), str(step.image)])]
 
     def _interact_stuck(self, step):
         """상호작용 키(enter·space·z·e·x)를 누르고도 화면이 안 바뀐 일이 INTERACT_TRIES 번 쌓이면 한 번만 쏜다. 사이에 이동 키가 껴도 센다(화면이 바뀐 눌림이 한 번이라도 나오면 처음부터). 키는 누른 수(그림 뒤)에 붙어 있다."""
@@ -179,6 +202,13 @@ def selftest():
                       Step(1, talk19 / "019.png", scene=sc(**{"health bar": []}))]) == [], "대화창 화면은 hp_bar_lost 아님"
         assert rules([Step(0, talk19 / "019.png", scene=sc(**{"health bar": pb})),
                       Step(1, talk19 / "018.png", scene=sc(**{"health bar": []}))]) == ["hp_bar_lost"], "대화창 없이 사라지면 그대로"
+        pl = Box(100, 100, 120, 140)
+        ps = lambda img, b=pl: Scene(img, boxes={"person": [b]}, player=b)
+        seq = [Step(0, real, ("left",), ps(real)), Step(1, other, ("up",), ps(other)), Step(2, real, ("left",), ps(real)), Step(3, other, (), ps(other))]
+        assert rules(seq) == ["player_stuck"], "플레이어 박스가 2방향 3번 눌림에도 제자리"
+        assert rules(seq[:3] + [Step(3, other, (), ps(other, Box(140, 100, 160, 140)))]) == [], "마지막에 움직였으면 아님"
+        one = [Step(t, img, ("left",), ps(img)) for t, img in enumerate((real, other, real))] + [Step(3, other, (), ps(other))]
+        assert rules(one) == [], "한 방향만 막힘은 벽일 수 있다"
         bad = Scene(real, boxes={"person": []}, errors={"person": "x"})
         assert rules([Step(0, real, scene=sc(**{"person": pb})), Step(1, other, scene=bad)]) == [], "인식 실패는 소실이 아님"
     print("judge selftest ok")

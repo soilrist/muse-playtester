@@ -16,6 +16,17 @@
 
 ---
 
+## #50 · 2026-10-29 · INBOX 결함 — note 강제를 NOTE_EVERY 수 간격으로 제한
+- 계획: INBOX 1번(결함, note 강제가 끼임마다 반복) · 고칠 곳 `src/run.py` `run_session`·`selftest`
+- 한 것: `last_note`(초기 -NOTE_EVERY) 도입. only_note 강제는 (same_screen 직후 또는 NOTE_EVERY 배수 수) 이면서 `n - last_note >= NOTE_EVERY` 일 때만. 모델이 고른 note 도 `last_note` 갱신. selftest 에 '2수마다 same_screen 이 나는 가짜 judge 30수' 추가 — 강제 1~3번 단언. API 호출 없음(예산 $6.62/$7 유지)
+- 커밋: fix(run) 1개 + 이 STATUS 커밋
+- 검사: 1층 통과 `python3 -m py_compile src/run.py` 오류 없음 / 2층 통과 "run selftest ok" (jev SUPPORTED) / 3층 못 함(화면 조각 아님)
+- 플레이어 눈: 해당 없음
+- 점검한 규칙: 2, 3, 7, 9, 11, 15
+- 가정한 것(🟡): 없음 / 물은 것(🔴): 없음
+- INBOX 처리: note 강제 결함 줄 삭제
+- 다음: 루프 몫 없음, D7 사람 몫. 실측 재확인은 예산 상향 뒤에만
+
 ## #49 · 2026-10-29 · 할 일 소진 — 막힘 기록 후 STOP
 - 계획: INBOX 처리 대상 줄 0개(`grep` 결과 없음), ROADMAP `[ ]` 0개(남은 건 D7 `[!] 사람:` 뿐), `→루프` 열린 줄 없음 → ④-2-4
 - 한 것: 코드 변경 없음. 막힘: 사람 답 필요 0개, 사람만 할 수 있는 조각 1개 (1순위: D7 데모 영상 촬영·제출 — 마일스톤 D7 이 기다림, 마감 2026-11-05 11:00 KST). 예산 $7 상한 안이라 새 run 금지 유지. `loop/STOP` 생성

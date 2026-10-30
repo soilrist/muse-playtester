@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 ROOT = Path(__file__).resolve().parents[2]
 RUN = ROOT / (sys.argv[1] if len(sys.argv) > 1 else "runs/20261029-172210")
 BUG = ROOT / "bugs/0048-same-screen-at-step-19/report.md"
+PLAY = ROOT / "runs/20261030-083029"  # SAM 플레이어 추적이 로그에 남은 실측
 OUT = ROOT / "demo/playtester-demo.mp4"
 W, H = 1920, 1080
 BG, FG, DIM, ACC, RED, GRN = "#101418", "#f2f2f2", "#9aa4ad", "#4da3ff", "#ff5a5a", "#4cd17a"
@@ -34,8 +35,8 @@ def card():
     return im, ImageDraw.Draw(im)
 
 
-def frame(name):
-    return Image.open(RUN / "frames" / name).convert("RGB")
+def frame(name, run=None):
+    return Image.open((run or RUN) / "frames" / name).convert("RGB")
 
 
 def paste(im, src, x, y, w):
@@ -65,8 +66,8 @@ def title(d, s, sub=None):
         d.text((80, 125), sub, font=font(30), fill=DIM)
 
 
-def log():
-    return [json.loads(l) for l in (RUN / "log.jsonl").read_text(encoding="utf-8").splitlines()]
+def log(run=None):
+    return [json.loads(l) for l in ((run or RUN) / "log.jsonl").read_text(encoding="utf-8").splitlines()]
 
 
 # ── 장면들: (그림 목록[(이미지, 비중)], 내레이션, 최소 길이초 — 그림 읽을 시간) ──
@@ -83,17 +84,27 @@ def s1():
 
 def s_play():
     """실측 60수를 빠르게 넘긴다 — 사람 손 없이 실제로 플레이하는 장면."""
-    pics = []
-    for e in log():
+    pics, es = [], log(PLAY)
+    end = f"{es[-1]['t'] // 60:.0f}:{es[-1]['t'] % 60:02.0f}"
+    for e in es:
         im, d = card()
-        paste(im, frame(Path(e["capture"]).name), 240, 0, 1440)
+        src = frame(Path(e["capture"]).name, PLAY)
+        k = 1440 / src.width
+        paste(im, src, 240, 0, 1440)
+        box = lambda b, c, w: d.rectangle((240 + b[0] * k, b[1] * k, 240 + b[2] * k, b[3] * k), outline=c, width=w)
+        for b in e.get("boxes", {}).get("person", []):
+            if b != e.get("player"):
+                box(b, ACC, 3)
+        if e.get("player"):
+            box(e["player"], GRN, 6)
+            d.text((240 + e["player"][0] * k, e["player"][1] * k - 44), "player", font=font(34, FB), fill=GRN)
         d.rectangle((0, 930, W, H), fill=BG)
         args = " ".join(f"{v}" for k, v in e["args"].items() if k != "hold_ms")[:40]
         d.text((60, 950), f"step {e['step']:>2}   {e['tool']} {args}", font=font(40, MONO), fill=ACC)
         d.text((60, 1010), e["why"][:110], font=font(30), fill=FG)
-        d.text((1560, 950), f"{e['t'] // 60:.0f}:{e['t'] % 60:02.0f} / 12:54", font=font(30, MONO), fill=DIM)
+        d.text((1560, 950), f"{e['t'] // 60:.0f}:{e['t'] % 60:02.0f} / {end}", font=font(30, MONO), fill=DIM)
         pics.append((im, 1))
-    return pics, ("Here it is playing on its own: thirteen minutes, sped up. Every line at the bottom is one real key press and the reason the model chose it. "
+    return pics, ("Here it is playing on its own: eighteen minutes, sped up. The green box is the player, found by SAM and tracked by which box moves after a move key. Every line at the bottom is one real key press and the reason the model chose it. "
                   "It skips the intro, talks to the village chief, and keeps trying keys when the character stops responding."), 16
 
 

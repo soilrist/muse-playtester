@@ -74,8 +74,15 @@ def restore_saves(src, backup):
         shutil.copytree(backup, src)
 
 
-def launch_game():
-    return subprocess.Popen(GAME_CMD, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def launch_game(tries=3):
+    """게임을 띄우고 BOOT_SEC 기다린다. 부팅 중에 죽으면 다시 띄운다 (Snarehaven 은 VM 에서 가끔 시작하자마자 assert 로 죽는다)."""
+    for i in range(tries):
+        game = subprocess.Popen(GAME_CMD, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(BOOT_SEC)
+        if game.poll() is None:
+            return game
+        print(f"게임이 부팅 중 종료됨 (코드 {game.returncode}), 재실행 {i + 1}/{tries}")
+    raise RuntimeError("게임이 계속 부팅 중에 죽는다")
 
 
 def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, goal=GOAL, clock=time.monotonic):
@@ -259,7 +266,6 @@ def main():
     try:
         game = launch_game()
         try:
-            time.sleep(BOOT_SEC)
             import act
             act.focus_game()  # 세션 시작 때 단 한 번만 창을 올린다 — 이후엔 빼앗지 않는다
             reason, n = run_session(default_ports(), run_dir)

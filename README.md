@@ -28,8 +28,10 @@ On macOS, grant the terminal Screen Recording and Accessibility permission (need
 ## Status
 Working pieces, each with a self-check: `src/report.py selftest`, `src/notes.py selftest`, `src/viewer_build.py selftest`, `src/run.py selftest`, `src/capture.py` (saves a screenshot). `src/perceive.py` (SAM), `src/decide.py` (Spark tool calls) and `src/act.py` (key presses) are chained by `src/run.py` into a session loop (log, captures, `summary.md`, `playtest_notes.md`). A full 60-move run on the real game has completed inside a Windows VM (so the agent does not take over the developer's own screen); more runs and bug reports are in progress.
 
+Snarehaven (UE5, Win64 build in the same VM): a full 60-step session completed with real mouse clicks — title screen, intro and tutorial cleared, pause menu and HUD exercised. Findings: conflicting server status in offline mode ("서버에 연결 중..." and "서버 연결 안 됨" shown at once, no retry), six ambient/bird sound packages missing from the packaged build (`SFX_Amb_Rain_02`, `SFX_Amb_Ocean_02`, `SFX_Amb_Wind_02`, `SFX_Amb_Night_02`, `SFX_Amb_Swamp_02`, `SFX_Bird_07`), and an intermittent startup crash (`Assertion failed: IsSet()`), which PlayTester now survives by relaunching the game up to three times. Known limit: the VM's virtual GPU does not draw Snarehaven's 3D world (DX11 and DX12 both tried), so the in-world part of that run shows only the HUD.
+
 ## Demo video
-_Coming soon._
+2.5-minute draft: Godot run, Unreal run, judge and bug report. Built from real runs by `.venv/bin/python tools/demo/make_video.py` (writes `demo/playtester-demo.mp4`, narration via edge-tts).
 
 ## Bug reports
 See [`bugs/INDEX.md`](bugs/INDEX.md).

@@ -1,12 +1,15 @@
 """판단 (DESIGN §4.4). Muse Spark 툴 호출로 다음 행동 하나를 받는다."""
 import json
 
+from capture import SNARE
 from meta_client import call_text, function_calls
 
 WHY = {"type": "string", "description": "One short sentence: what you see on screen and why you chose this action."}
 TOOLS = [
     {"type": "function", "name": "press", "description": "Press one game key for hold_ms milliseconds.",
      "parameters": {"type": "object", "properties": {"key": {"type": "string", "description": "One of: up, down, left, right, enter, esc, space, tab, shift, or a single letter."}, "hold_ms": {"type": "integer"}, "why": WHY}, "required": ["key", "hold_ms", "why"]}},
+    {"type": "function", "name": "click", "description": "Click the mouse inside the game window. x and y are fractions (0..1) of the screenshot width and height.",
+     "parameters": {"type": "object", "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "button": {"type": "string", "enum": ["left", "right"]}, "why": WHY}, "required": ["x", "y", "button", "why"]}},
     {"type": "function", "name": "wait", "description": "Do nothing for ms milliseconds.",
      "parameters": {"type": "object", "properties": {"ms": {"type": "integer"}, "why": WHY}, "required": ["ms", "why"]}},
     {"type": "function", "name": "report_bug", "description": "Report a bug you observed.",
@@ -30,11 +33,13 @@ def decide(scene_text, recent, goal, image=None, only_note=False):
         "(4) Scene comes from SAM 3.1. When it says 'player (SAM-tracked)', that box is the character that moved when you pressed a move key, and other people are given as offsets from the player — "
         "walk toward a target by pressing the direction of its offset. If no player is given yet, find the player in the screenshot yourself and judge directions from the player, not from an NPC. "
         "(5) If you see anything odd or uncomfortable (a key that does nothing, a popup that appears suddenly, unreadable text), call note with it instead of ignoring it.\n"
-        f"Goal: {goal}\nScene: {scene_text}\nRecent moves: {json.dumps(recent[-5:])}"
+        + ("(6) This is a mobile action game played on desktop: WASD or arrows move, left click attacks, right click captures a monster, esc pauses. "
+           "Menu buttons must be clicked with the left mouse button at their position in the screenshot.\n" if SNARE else "")
+        + f"Goal: {goal}\nScene: {scene_text}\nRecent moves: {json.dumps(recent[-5:])}"
     )
     if only_note:
         prompt += "\nThe last key did nothing here. This move you MUST call note: describe what looks odd or uncomfortable about it for a player."
-    calls = function_calls(call_text(prompt, tools=[t for t in TOOLS if t["name"] == "note"] if only_note else TOOLS, image=image))
+    calls = function_calls(call_text(prompt, tools=[t for t in TOOLS if t["name"] == "note"] if only_note else [t for t in TOOLS if SNARE or t["name"] != "click"], image=image))
     if not calls:
         raise RuntimeError("툴 호출 없음")
     return calls[0]

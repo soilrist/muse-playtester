@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from capture import Interrupted, human_idle_seconds
+from capture import SNARE, Interrupted, human_idle_seconds
 from judge import MOVE_KEYS, Judge, Step, frames_same
 from perceive import track
 from notes import summarize, write_notes
@@ -25,9 +25,14 @@ else:
     GODOT = Path.home() / "Applications/Godot.app/Contents/MacOS/Godot"
     GAME = Path.home() / "Git Project/zerostudyrpg-snapshot"
     SAVE_DIR = Path.home() / "Library/Application Support/Godot/app_userdata/심연의 숨결"  # 사람 세이브와 공유
+if SNARE:  # 원본 저장소가 아닌 복사본(snarehaven-snapshot)을 VM 에서 Win64 로 패키징한 것 (부트스트랩 exe 는 arm64 VC++ 재배포를 요구해 본체를 바로 띄운다). PlayFab 없이 오프라인으로 띄운다
+    GAME_CMD = [r"C:\pt\snare\Windows\Snarehaven\Binaries\Win64\Snarehaven.exe", "-windowed", "-ResX=1280", "-ResY=720", "-SnareOffline"]
+    SAVE_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "Snarehaven/Saved"
+else:
+    GAME_CMD = [str(GODOT), "--path", str(GAME)]
 SEE = ["person", "health bar"]  # judge 규칙이 쓰는 둘만 묻는다 (SAM 상한 120 = 60수 x 2장)
 GOAL = "explore the game and look for bugs"
-BOOT_SEC = 6
+BOOT_SEC = 25 if SNARE else 6  # 언리얼은 셰이더·맵 로드가 길다
 PROBE_KEYS = ["up", "down", "left", "right", "w", "s", "a", "d"]  # 반대 방향이 이웃하게 — 벽에 막힌 쪽과 열린 쪽이 표에서 갈린다
 INTERACT_PROBE_KEYS = ["enter", "space", "z", "e", "x"]  # 통하는 키가 나오면 거기서 멈춘다 (대화창이 열렸는데 또 누르면 넘어가 버린다)
 PROBE_HOLD_MS = 300
@@ -47,7 +52,7 @@ def default_ports():
     import decide
     import perceive
     return {"capture": capture.capture, "perceive": lambda p: perceive.perceive(p, SEE),
-            "decide": decide.decide, "press": act.press, "wait": act.wait,
+            "decide": decide.decide, "press": act.press, "click": act.click, "wait": act.wait,
             "summarize": summarize}
 
 
@@ -70,7 +75,7 @@ def restore_saves(src, backup):
 
 
 def launch_game():
-    return subprocess.Popen([str(GODOT), "--path", str(GAME)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return subprocess.Popen(GAME_CMD, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, goal=GOAL, clock=time.monotonic):
@@ -114,6 +119,11 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                 ports["press"](args["key"], args["hold_ms"])
                 keys = (args["key"],)
                 moves.append(f"{args['key']} {args['hold_ms']}ms")
+            elif tool == "click":  # Snarehaven 전용 — 공격·포획·메뉴 버튼이 마우스다
+                button = args.get("button", "left")
+                ports["click"](float(args["x"]), float(args["y"]), button)
+                keys = (f"{button}_click",)
+                moves.append(f"{button} click {float(args['x']):.2f},{float(args['y']):.2f}")
             elif tool == "wait":
                 ports["wait"](args["ms"])
                 moves.append(f"wait {args['ms']}ms")
@@ -270,7 +280,8 @@ def selftest():
     def ports(tools):
         it = iter(tools)
         return {"capture": lambda p: (Path(p).parent.mkdir(parents=True, exist_ok=True), shutil.copy(shot, p), Path(p))[2], "perceive": lambda p: Scene(p), "decide": lambda s, r, g, i=None, **kw: next(it),
-                "press": lambda k, h: log.append(("press", k, h)), "wait": lambda ms: log.append(("wait", ms))}
+                "press": lambda k, h: log.append(("press", k, h)), "click": lambda x, y, b: log.append(("click", x, y, b)),
+                "wait": lambda ms: log.append(("wait", ms))}
 
     old = report.ROOT
     with tempfile.TemporaryDirectory() as d:
@@ -286,6 +297,9 @@ def selftest():
             assert [x["step"] for x in rows] == [1, 2, 3] and rows[0]["tool"] == "press" and rows[0]["args"]["key"] == "down", rows
             assert all(x["capture"].startswith("frames/") and (Path(d) / "r1" / x["capture"]).is_file() and x["scene"] for x in rows), rows
             assert [x["why"] for x in rows] == ["see door", "let it settle", "seen enough"] and "why" not in rows[0]["args"], rows
+            log.clear()
+            run_session(ports([("click", {"x": 0.5, "y": 0.25, "button": "right", "why": "capture it"}), ("done", {"reason": "ok"})]), Path(d) / "r1c")
+            assert log == [("click", 0.5, 0.25, "right")], log
             r, n = run_session(ports([("wait", {"ms": 1})] * 9), Path(d) / "r2", max_actions=4)
             assert (r, n) == ("action limit", 4), (r, n)
             r, n = run_session(ports([("wait", {"ms": 1})] * 9), Path(d) / "r3", max_spark=2)

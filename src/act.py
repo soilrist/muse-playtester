@@ -3,6 +3,7 @@ import sys
 import time
 
 from pynput.keyboard import Controller, Key
+from pynput.mouse import Button, Controller as Mouse
 
 from capture import OWNER, Interrupted, bring_to_front, find_game_window, frontmost_owner
 
@@ -16,6 +17,7 @@ MAX_HOLD_MS = 3000
 FOCUS_TRIES = 3  # 활성화 요청이 한 번에 안 먹는 일이 있다
 
 _keyboard = Controller()
+_mouse = Mouse()
 
 
 def resolve_key(name):
@@ -54,6 +56,18 @@ def press(key_name, hold_ms, raise_to_front=False):
     _keyboard.release(key)
     if frontmost_owner() != OWNER:
         raise Interrupted("키를 누르는 사이 다른 앱이 앞으로 왔다")
+
+
+def click(x, y, button="left"):
+    """게임 창 안 (x, y) — 창 너비·높이에 대한 0~1 비율 — 를 실제 마우스로 누른다. 앞 창 확인은 press 와 같다."""
+    if frontmost_owner() != OWNER:
+        raise Interrupted("클릭하기 전에 다른 앱이 앞으로 왔다")
+    wx, wy, w, h = find_game_window()[1]
+    _mouse.position = (wx + round(min(max(x, 0), 1) * (w - 1)), wy + round(min(max(y, 0), 1) * (h - 1)))
+    time.sleep(0.05)
+    _mouse.click(Button.right if button == "right" else Button.left)
+    if frontmost_owner() != OWNER:
+        raise Interrupted("클릭하는 사이 다른 앱이 앞으로 왔다")
 
 
 def wait(ms):

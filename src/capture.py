@@ -1,4 +1,5 @@
 """게임 창 캡처 — Quartz 로 창을 찾고 mss 로 그 영역을 PNG 로 저장한다 (DESIGN §4.2)."""
+import os
 import sys
 import time
 from pathlib import Path
@@ -16,8 +17,9 @@ else:
     import Quartz
     from AppKit import NSRunningApplication
 
-OWNER = "Godot"
-TITLE_HINT = "심연의 숨결"
+SNARE = os.environ.get("PT_GAME") == "snarehaven"  # 두 번째 대상: 언리얼 모바일 게임 Snarehaven 의 Win64 패키지 빌드
+OWNER = "Snarehaven" if SNARE else "Godot"
+TITLE_HINT = "Snarehaven" if SNARE else "심연의 숨결"
 MAX_WIDTH = 1280
 FOCUS_WAIT = 0.6
 ROOT = Path(__file__).resolve().parent.parent

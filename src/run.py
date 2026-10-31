@@ -25,8 +25,8 @@ else:
     GODOT = Path.home() / "Applications/Godot.app/Contents/MacOS/Godot"
     GAME = Path.home() / "Git Project/zerostudyrpg-snapshot"
     SAVE_DIR = Path.home() / "Library/Application Support/Godot/app_userdata/심연의 숨결"  # 사람 세이브와 공유
-if SNARE:  # 원본 저장소가 아닌 복사본(snarehaven-snapshot)을 VM 에서 Win64 로 패키징한 것 (부트스트랩 exe 는 arm64 VC++ 재배포를 요구해 본체를 바로 띄운다). PlayFab 없이 오프라인으로 띄운다
-    GAME_CMD = [r"C:\pt\snare\Windows\Snarehaven\Binaries\Win64\Snarehaven.exe", "-windowed", "-ResX=1280", "-ResY=720", "-SnareOffline"]
+if SNARE:  # 원본 저장소가 아닌 복사본(snarehaven-snapshot)을 VM 에서 Win64 로 패키징한 것 (부트스트랩 exe 는 arm64 VC++ 재배포를 요구해 본체를 바로 띄운다). PlayFab 없이 오프라인으로 띄운다. -dx11: Parallels GPU 는 D3D12 컴퓨트 PSO 를 못 만들어 자동 노출이 0 → 세상이 검게 나온다
+    GAME_CMD = [r"C:\pt\snare\Windows\Snarehaven\Binaries\Win64\Snarehaven.exe", "-windowed", "-ResX=1280", "-ResY=720", "-SnareOffline", "-dx11"]
     SAVE_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "Snarehaven/Saved"
 else:
     GAME_CMD = [str(GODOT), "--path", str(GAME)]
@@ -88,7 +88,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
     judge, moves, bug_paths, spark, sam, notes = Judge(), [], [], 0, 0, []
     stuck = {}
     last_note = -NOTE_EVERY  # note 를 마지막으로 남긴 수 — 강제는 이 뒤 NOTE_EVERY 수가 지나야 다시 건다
-    hint, same_reported, want_note = "", False, False  # hint: 키별 확인에서 알아낸 관찰 결과를 이후 decide 입력에 붙인다
+    hint, reported, want_note = "", set(), False  # hint: 키별 확인에서 알아낸 관찰 결과를 이후 decide 입력에 붙인다
     t0, reason, n, entry = clock(), "action limit", 0, None
     prev_scene, prev_keys = None, ()  # 플레이어 추적용: 지난 수의 인식 결과와 누른 키
     try:
@@ -121,9 +121,10 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                 moves.append(f"{args['key']} {args['hold_ms']}ms")
             elif tool == "click":  # Snarehaven 전용 — 공격·포획·메뉴 버튼이 마우스다
                 button = args.get("button", "left")
-                ports["click"](float(args["x"]), float(args["y"]), button)
+                x, y = (float(args[a]) / (1000 if float(args[a]) > 1 else 1) for a in ("x", "y"))  # Spark 가 가끔 0~1000 눈금으로 준다
+                ports["click"](x, y, button)
                 keys = (f"{button}_click",)
-                moves.append(f"{button} click {float(args['x']):.2f},{float(args['y']):.2f}")
+                moves.append(f"{button} click {x:.2f},{y:.2f}")
             elif tool == "wait":
                 ports["wait"](args["ms"])
                 moves.append(f"wait {args['ms']}ms")
@@ -132,7 +133,7 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                 _log(run_dir, entry)
                 break
             elif tool == "report_bug":
-                moves.append(f"report_bug {args.get('title', '')}")
+                moves.append(f"report_bug {args.get('title', '')} (filed — do not report it again)")
                 bug_paths.append(_report(Bug(args["title"], args["severity"], list(moves), "game behaves normally",
                                              args["title"], f"Spark: {args['why']}", [str(shot)], run_dir.name)))
             elif tool == "note":
@@ -159,11 +160,11 @@ def run_session(ports, run_dir, max_actions=None, max_spark=None, max_sam=None, 
                     worked = [k for k, changed, _, _ in table if changed]
                     moves.append(f"hint: '{worked[0]}' changes the screen when interacting — use it" if worked else
                                  "hint: none of enter/space/z/e/x changed the screen here — move closer or try another goal")
-                if f.rule == "same_screen" and same_reported:  # 같은 원인(키 무반응) 리포트는 세션당 1개
+                if f.rule in reported:  # 같은 규칙 리포트는 세션당 1개 — 검은 화면이 40수 이어지면 리포트 40개가 아니라 1개
                     entry["findings"].append(f.rule)
                     entry.setdefault("probe", {}).update({k: changed for k, changed, _, _ in table})
                     continue
-                same_reported = same_reported or f.rule == "same_screen"
+                reported.add(f.rule)
                 bug_paths.append(_report(Bug(f"{f.rule} at step {n}", sev, list(moves), expect,
                                              f.why, f"judge rule {f.rule}", f.frames, run_dir.name, table)))
                 entry["findings"].append(f.rule)
@@ -300,6 +301,9 @@ def selftest():
             log.clear()
             run_session(ports([("click", {"x": 0.5, "y": 0.25, "button": "right", "why": "capture it"}), ("done", {"reason": "ok"})]), Path(d) / "r1c")
             assert log == [("click", 0.5, 0.25, "right")], log
+            log.clear()
+            run_session(ports([("click", {"x": 785, "y": 804, "why": "0~1000 눈금"}), ("done", {"reason": "ok"})]), Path(d) / "r1d")
+            assert log == [("click", 0.785, 0.804, "left")], log
             r, n = run_session(ports([("wait", {"ms": 1})] * 9), Path(d) / "r2", max_actions=4)
             assert (r, n) == ("action limit", 4), (r, n)
             r, n = run_session(ports([("wait", {"ms": 1})] * 9), Path(d) / "r3", max_spark=2)
@@ -377,7 +381,7 @@ def selftest():
 
                 def check(self, step):
                     self.k += 1
-                    return [Finding("same_screen", "fake", [str(step.image)])] if self.k % 2 == 0 else []
+                    return [Finding(r, "fake", [str(step.image)]) for r in ("same_screen", "black_screen")] if self.k % 2 == 0 else []
             forced30, old_judge = [], Judge
             globals()["Judge"] = EveryOther
             try:
@@ -387,6 +391,7 @@ def selftest():
             finally:
                 globals()["Judge"] = old_judge
             assert len(forced30) == 30 and 1 <= sum(forced30) <= 3, forced30
+            assert "- 리포트: 2\n" in (Path(d) / "r12" / "summary.md").read_text(), "규칙마다 세션당 리포트 1개 (15번 걸려도)"
             # 사람이 돌아옴: 3번째 수의 press 중 다른 앱이 앞으로 옴 → interrupted 로그, judge·리포트 없음, 정상 종료
             def rude(k, h):
                 if len(log) >= 2:

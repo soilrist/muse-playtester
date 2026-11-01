@@ -14,6 +14,7 @@ from judge import MOVE_KEYS, Judge, Step, frames_same
 from perceive import track
 from notes import summarize, write_notes
 from report import Bug, write_report
+import gamelog
 
 ROOT = Path(__file__).resolve().parent.parent
 NOTE_EVERY = 10  # 막힘이 없어도 10수마다 한 번은 note 만 고르게 한다 (소감 0줄 방지, DESIGN §4.10)
@@ -25,11 +26,14 @@ else:
     GODOT = Path.home() / "Applications/Godot.app/Contents/MacOS/Godot"
     GAME = Path.home() / "Git Project/zerostudyrpg-snapshot"
     SAVE_DIR = Path.home() / "Library/Application Support/Godot/app_userdata/심연의 숨결"  # 사람 세이브와 공유
-if SNARE:  # 원본 저장소가 아닌 복사본(snarehaven-snapshot)을 VM 에서 Win64 로 패키징한 것 (부트스트랩 exe 는 arm64 VC++ 재배포를 요구해 본체를 바로 띄운다). PlayFab 없이 오프라인으로 띄운다. -dx11: Parallels GPU 는 D3D12 컴퓨트 PSO 를 못 만들어 자동 노출이 0 → 세상이 검게 나온다
-    GAME_CMD = [r"C:\pt\snare\Windows\Snarehaven\Binaries\Win64\Snarehaven.exe", "-windowed", "-ResX=1280", "-ResY=720", "-SnareOffline", "-dx11"]
+if SNARE:  # 원본 저장소가 아닌 복사본(snarehaven-snapshot)을 VM 에서 Win64 로 패키징한 것 (부트스트랩 exe 는 arm64 VC++ 재배포를 요구해 본체를 바로 띄운다). PlayFab 없이 오프라인으로 띄운다. -dx11: Parallels GPU 는 D3D12 컴퓨트 PSO 를 못 만든다
+    GAME_CMD = [r"C:\pt\snare\Windows\Snarehaven\Binaries\Win64\Snarehaven.exe", "-windowed", "-ResX=1280", "-ResY=720", "-SnareOffline", "-dx11",
+                "-dpcvars=r.AntiAliasingMethod=1"]  # VM(Parallels) GPU 에선 기본 AA(TSR)가 3D 화면을 통째로 검게 만든다 — FXAA 로
     SAVE_DIR = Path(os.environ.get("LOCALAPPDATA", "")) / "Snarehaven/Saved"
+    GAME_LOGS = Path(GAME_CMD[0]).parents[2] / "Saved/Logs"
 else:
     GAME_CMD = [str(GODOT), "--path", str(GAME)]
+    GAME_LOGS = SAVE_DIR / "logs"  # Godot user://logs — restore_saves 전에 읽는다
 SEE = ["person", "health bar"]  # judge 규칙이 쓰는 둘만 묻는다 (SAM 상한 120 = 60수 x 2장)
 GOAL = "explore the game and look for bugs"
 BOOT_SEC = 25 if SNARE else 6  # 언리얼은 셰이더·맵 로드가 길다
@@ -74,7 +78,7 @@ def restore_saves(src, backup):
         shutil.copytree(backup, src)
 
 
-def launch_game(tries=3):
+def launch_game(tries=5):
     """게임을 띄우고 BOOT_SEC 기다린다. 부팅 중에 죽으면 다시 띄운다 (Snarehaven 은 VM 에서 가끔 시작하자마자 assert 로 죽는다)."""
     for i in range(tries):
         game = subprocess.Popen(GAME_CMD, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -250,6 +254,16 @@ def _summary(run_dir, reason, n, spark, sam, bug_paths):
     (Path(run_dir) / "summary.md").write_text("\n".join(lines), encoding="utf-8")
 
 
+def log_bugs(run_dir, t0):
+    """세션 끝에 게임 로그를 읽어 리포트를 만들고 summary.md 에 덧붙인다. 부팅 크래시면 화면 없이 로그만 근거로."""
+    frame = next(iter(sorted((Path(run_dir) / "frames").glob("[0-9][0-9][0-9].png"))), None)
+    Path(run_dir).mkdir(parents=True, exist_ok=True)
+    paths = gamelog.report_logs(GAME_LOGS, t0, frame, Path(run_dir).name, ROOT / "bugs")
+    with (Path(run_dir) / "summary.md").open("a", encoding="utf-8") as f:
+        f.write(f"- 게임 로그 리포트: {len(paths)}\n" + "".join(f"  - {_rel_to(p, 'bugs')}\n" for p in paths))
+    return paths
+
+
 def human_busy(idle_fn=human_idle_seconds, min_sec=IDLE_MIN_SEC):
     """사람이 맥을 쓰는 중이면 유휴 초(문자열 설명용), 아니면 None. 유휴를 못 읽으면 쓰는 중이 아닌 것으로 본다."""
     idle = idle_fn()
@@ -263,8 +277,13 @@ def main():
         return
     run_dir = ROOT / "runs" / datetime.now().strftime("%Y%m%d-%H%M%S")
     backup = backup_saves(SAVE_DIR, ROOT / "backups" / ("userdata-" + datetime.now().strftime("%Y%m%d-%H%M%S")))
+    t0 = time.time()
     try:
-        game = launch_game()
+        try:
+            game = launch_game()
+        except RuntimeError:
+            print("부팅 크래시 리포트:", *log_bugs(run_dir, t0))  # 못 띄운 것도 발견이다 — 로그를 읽고 나서 올린다
+            raise
         try:
             import act
             act.focus_game()  # 세션 시작 때 단 한 번만 창을 올린다 — 이후엔 빼앗지 않는다
@@ -272,6 +291,7 @@ def main():
         finally:
             game.terminate()
             game.wait()
+        log_bugs(run_dir, t0)
     finally:
         restore_saves(SAVE_DIR, backup)
     print(f"session end: {reason} ({n} steps) -> {run_dir}")

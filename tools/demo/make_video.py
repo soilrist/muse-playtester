@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RUN = ROOT / (sys.argv[1] if len(sys.argv) > 1 else "runs/20261029-172210")
 BUG = ROOT / "bugs/0048-same-screen-at-step-19/report.md"
 PLAY = ROOT / "runs/20261030-083029"  # SAM 플레이어 추적이 로그에 남은 실측
-SNARE = ROOT / "runs/20261031-170624"  # Snarehaven(UE5) Win64 실측
+SNARE = ROOT / "runs/20261101-091910"  # Snarehaven(UE5) Win64 실측
 OUT = ROOT / "demo/playtester-demo.mp4"
 W, H = 1920, 1080
 BG, FG, DIM, ACC, RED, GRN = "#101418", "#f2f2f2", "#9aa4ad", "#4da3ff", "#ff5a5a", "#4cd17a"
@@ -231,7 +231,7 @@ def s_snare():
     """같은 에이전트, UE5 게임 — 실측 run 의 클릭을 빨간 점으로 얹어 넘긴다."""
     pics = []
     es = log(SNARE)
-    for e in es[:7] + es[10:11]:  # 타이틀→인트로→튜토리얼, 일시정지 메뉴 — 뒤는 VM 에서 검은 월드라 뺀다
+    for e in es[:5] + es[7:8] + es[16:17] + es[18:19]:  # 타이틀→인트로→튜토리얼→들판 이동, 검은 덩어리 메모
         im, d = card()
         title(d, "Same agent, different engine: Unreal Engine 5", "Snarehaven · Win64 build in the VM · real mouse clicks")
         src = frame(Path(e["capture"]).name, SNARE)
@@ -244,13 +244,13 @@ def s_snare():
         d.text((60, 1010), f"step {e['step']:>2}  {e['tool']}{args}  —  {e['why'][:80]}", font=font(30, KO), fill=FG)
         pics.append((im, 1))
     return pics, ("Same agent, a different engine. Snarehaven is my Unreal Engine 5 game, packaged for Windows. "
-                  "No game-specific code: PlayTester reads the title screen, clicks Start, and clicks through the intro and the tutorial on its own."), 12
+                  "No game-specific code: PlayTester reads the title screen, clicks Start, clears the intro and the tutorial, and walks into the world on its own."), 12
 
 
 def s_snare_find():
     im, d = card()
-    title(d, "What it found in the Unreal build", "runs/20261031-170624 · game log")
-    src = frame("021.png", SNARE)
+    title(d, "What it found in the Unreal build", "runs/20261101-091910 · bugs/0055, 0057 filed from the game log")
+    src = frame("019.png", SNARE)
     sd = ImageDraw.Draw(src)
     for b in ((8, 8, 148, 60), (1046, 22, 1258, 61)):
         sd.rectangle(b, outline=RED, width=5)
@@ -258,14 +258,14 @@ def s_snare_find():
     d.text((80, 750), "\"connecting to server...\" and \"server not connected\" at once", font=font(30), fill=RED)
     y = 200
     for head, body in (("Conflicting server status", "two indicators disagree in offline mode, no retry"),
-                       ("6 sound packages missing from the build", "SFX_Amb_Rain_02, _Ocean_02, _Wind_02, _Night_02, _Swamp_02, SFX_Bird_07"),
-                       ("Intermittent startup crash", "Assertion failed: IsSet() — PlayTester relaunches and keeps testing")):
+                       ("8 sound packages missing from the build", "SFX_Amb_Rain/Ocean/Wind/Night/Swamp_02, SFX_Bird_07, SFX_Footstep_Grass_06, SFX_Swing_04"),
+                       ("Intermittent startup crash", "Assertion failed: IsSet() — reported from the log, then PlayTester relaunches and keeps testing")):
         d.text((1100, y), head, font=font(38, FB), fill=ACC)
         y = wrap(d, (1100, y + 55), body, font(30), FG, 760) + 40
-    d.text((1100, y + 10), "VM note: the virtual GPU does not draw the 3D world; menus and HUD work.", font=font(24), fill=DIM)
+    d.text((1100, y + 10), "VM note: black blobs are the virtual GPU dropping draws; Spark flagged them itself.", font=font(24), fill=DIM)
     return [(im, 1)], ("In the Unreal build it found two indicators that disagree: connecting, and not connected, at the same time. "
-                       "The game log showed six sound packages missing from the packaged build, "
-                       "and an intermittent startup crash that PlayTester now survives by relaunching the game."), 14
+                       "Reading the game log on its own, PlayTester filed eight sound packages missing from the packaged build, "
+                       "and an intermittent startup crash that it reports and survives by relaunching the game."), 14
 
 
 def s8():

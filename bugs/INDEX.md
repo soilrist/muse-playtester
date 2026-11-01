@@ -37,3 +37,10 @@
 | 0048 | [same_screen at step 19](0048-same-screen-at-step-19/report.md) | medium | 20261029-172210 |
 | 0049 | [same_screen at step 15](0049-same-screen-at-step-15/report.md) | medium | 20261030-083029 |
 | 0050 | [interact_stuck at step 27](0050-interact-stuck-at-step-27/report.md) | low | 20261030-083029 |
+| 0051 | [player_lost at step 7](0051-player-lost-at-step-7/report.md) | medium | 20261101-085034 |
+| 0052 | [black_screen at step 8](0052-black-screen-at-step-8/report.md) | medium | 20261101-085034 |
+| 0053 | [7 packages missing from the build](0053-7-packages-missing-from-the-build/report.md) | medium | 20261101-085034 |
+| 0054 | [6 packages missing from the build](0054-6-packages-missing-from-the-build/report.md) | medium | 20261101-091606 |
+| 0055 | [Crash: Assertion failed: IsSet()](0055-crash-assertion-failed-isset/report.md) | high | 20261101-091606 |
+| 0056 | [hp_bar_lost at step 16](0056-hp-bar-lost-at-step-16/report.md) | medium | 20261101-091910 |
+| 0057 | [8 packages missing from the build](0057-8-packages-missing-from-the-build/report.md) | medium | 20261101-091910 |

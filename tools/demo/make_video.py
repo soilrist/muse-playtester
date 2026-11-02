@@ -284,7 +284,7 @@ def s8():
     d.text((120, 220), f"{n} actions · {m:.0f} minutes · unattended", font=font(64, FB), fill=FG)
     d.text((120, 340), "SAM 3.1 sees  ·  Muse Spark decides  ·  real keys  ·  reproducible reports", font=font(40), fill=DIM)
     d.text((120, 560), "github.com/soilrist/muse-playtester", font=font(60, FB), fill=ACC)
-    d.text((120, 650), "Open source", font=font(40), fill=DIM)
+    d.text((120, 650), "Open source  ·  Promptforge  ·  mindkiln.dev@gmail.com", font=font(40), fill=DIM)
     return [(im, 1)], f"Two engines, one agent, {n} actions with nobody at the keyboard. PlayTester is open source on GitHub.", 8
 
 

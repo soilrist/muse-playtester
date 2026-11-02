@@ -2,6 +2,8 @@
 
 An AI agent that plays your game like a human — watching the screen, pressing keys — and writes reproducible bug reports.
 
+By **Promptforge** — a one-person studio building games and tools with AI · mindkiln.dev@gmail.com
+
 Built from scratch during Meta Global AI Developer Hackathon (Oct 28 – Nov 4, 2026). All product code lives in `src/` and was written during the event; `loop/`, `docs/`, `tools/` are my open-source dev-process template (soilrist/loop-starter-kit) used to run the build.
 
 ## Meta models used

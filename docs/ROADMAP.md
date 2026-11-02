@@ -37,7 +37,7 @@
 
 ## D7 — 11/3 제출 (11/4 는 예비)
 - [x] D7-01 3분 데모 영상 — `tools/demo/make_video.py` 가 runs/20261029-172210 실측 프레임·로그·bugs/0048 + edge-tts 내레이션으로 demo/playtester-demo.mp4(112초, 1920×1080, edge-tts Andrew 음성) 생성 (감독 10/30: 장면 8개 프레임 확인, 소리 있음)
-- [!] 사람: 해커톤 제출(계정 로그인·영상 업로드) — 기다리는 마일스톤: D7
+- [x] 해커톤 제출 완료 (2026-11-02, Cerebral Valley, Indie · Build for Your World, 팀 Promptforge — 마감 전까지 Update Project 로 수정 가능)
 
 ## 나중에 (순서 안 정함)
 - 

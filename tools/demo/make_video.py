@@ -1,8 +1,9 @@
 """3분 데모 영상 (D7, 대본 docs/specs/demo-script.md). 실측 run·리포트 + edge-tts 내레이션 → demo/playtester-demo.mp4
-API 는 부르지 않는다 — SAM 박스는 tools/demo/boxes013.json 에 한 번 받아 둔 값.
+API 는 부르지 않는다 — SAM 박스·판단은 run 의 log.jsonl, 플레이 장면은 VM 녹화본(tools/demo/record.py → vm/rec/).
     .venv/bin/pip install edge-tts   # 한 번 (say 는 기계음이라 버림)
     .venv/bin/python tools/demo/make_video.py [runs/<시각>]
 """
+import bisect
 import json
 import re
 import subprocess
@@ -13,10 +14,10 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
-RUN = ROOT / (sys.argv[1] if len(sys.argv) > 1 else "runs/20261029-172210")
-BUG = ROOT / "bugs/0048-same-screen-at-step-19/report.md"
-PLAY = ROOT / "runs/20261030-083029"  # SAM 플레이어 추적이 로그에 남은 실측
-SNARE = ROOT / "runs/20261101-091910"  # Snarehaven(UE5) Win64 실측
+RUN = ROOT / (sys.argv[1] if len(sys.argv) > 1 else "runs/20261102-150749")  # 녹화하며 돈 Godot 60수 실측
+BUG = ROOT / "bugs/0058-same-screen-at-step-18/report.md"
+REC = ROOT / "vm/rec"  # tools/demo/record.py 녹화본 (VM → 맥 복사)
+SNARE = ROOT / "runs/20261102-152538"  # Snarehaven(UE5) Win64 실측
 OUT = ROOT / "demo/playtester-demo.mp4"
 W, H = 1920, 1080
 BG, FG, DIM, ACC, RED, GRN = "#101418", "#f2f2f2", "#9aa4ad", "#4da3ff", "#ff5a5a", "#4cd17a"
@@ -71,6 +72,54 @@ def log(run=None):
     return [json.loads(l) for l in ((run or RUN) / "log.jsonl").read_text(encoding="utf-8").splitlines()]
 
 
+FPS = 30
+
+
+def footage(rec, run, segs, head):
+    """VM 에서 녹화한 실제 플레이(tools/demo/record.py) 를 구간마다 배속해 자막을 얹는다.
+    segs: [(시작초, 끝초, 배속)] — 초는 1수 캡처부터. 자막은 log.jsonl 의 t(그 수를 결정한 시각)부터 그 수.
+    (프레임 생성기, 프레임 수) 를 돌려준다 — main 이 ffmpeg 에 바로 흘린다."""
+    shots = sorted(int(p.stem) / 1000 for p in rec.glob("*.jpg"))
+    es = log(run)
+    e0 = (run / "frames" / "001.png").stat().st_mtime  # 맥·VM 시계 차는 0.1초 (rec-clock.txt 로 잼)
+    end = es[-1]["t"]
+
+    def gen():
+        cache = (None, None)
+        for a, b, speed in segs:
+            for i in range(int((b - a) * FPS / speed)):
+                tt = a + i * speed / FPS
+                k = min(bisect.bisect_left(shots, e0 + tt), len(shots) - 1)
+                if cache[0] != k:
+                    src = Image.open(rec / f"{round(shots[k] * 1000)}.jpg").convert("RGB")
+                    s = min(W / src.width, 900 / src.height)
+                    cache = (k, src.resize((round(src.width * s), round(src.height * s)), Image.BILINEAR))
+                im, d = card()
+                src = cache[1]
+                gx, gy = (W - src.width) // 2, 50 + (900 - src.height) // 2
+                im.paste(src, (gx, gy))
+                d.text((60, 8), head, font=font(30, FB), fill=DIM)
+                d.text((W - 380, 8), f"{tt // 60:.0f}:{tt % 60:04.1f} / {end // 60:.0f}:{end % 60:02.0f}  ×{speed}", font=font(30, MONO), fill=DIM)
+                e = next((e for e in reversed(es) if e["t"] <= tt), None)
+                if e is None:
+                    d.text((60, 975), "capturing the screen, asking SAM 3.1 and Muse Spark…", font=font(36), fill=DIM)
+                    yield im
+                    continue
+                a_ = e["args"]
+                if e["tool"] == "click" and tt - e["t"] < 1.5:
+                    x, y = gx + a_["x"] * src.width, gy + a_["y"] * src.height
+                    d.ellipse((x - 30, y - 30, x + 30, y + 30), outline=RED, width=8)
+                arg = (f"({a_['x']:.2f}, {a_['y']:.2f})" if e["tool"] == "click" else
+                       " ".join(str(v) for k, v in a_.items() if k in ("key", "ms", "kind")))
+                d.text((60, 960), f"step {e['step']:>2}  {e['tool']} {arg}", font=font(40, MONO), fill=ACC)
+                d.text((60, 1018), e["why"][:115], font=font(30, KO), fill=FG)
+                if e.get("findings") and tt - e["t"] < 4:
+                    d.rounded_rectangle((W - 620, 960, W - 40, 1040), 14, fill=RED)
+                    d.text((W - 595, 975), "bug flagged: " + ", ".join(e["findings"])[:24], font=font(38, FB), fill=FG)
+                yield im
+    return gen(), sum(int((b - a) * FPS / s) for a, b, s in segs)
+
+
 # ── 장면들: (그림 목록[(이미지, 비중)], 내레이션, 최소 길이초 — 그림 읽을 시간) ──
 
 def s1():
@@ -84,29 +133,11 @@ def s1():
 
 
 def s_play():
-    """실측 60수를 빠르게 넘긴다 — 사람 손 없이 실제로 플레이하는 장면."""
-    pics, es = [], log(PLAY)
-    end = f"{es[-1]['t'] // 60:.0f}:{es[-1]['t'] % 60:02.0f}"
-    for e in es:
-        im, d = card()
-        src = frame(Path(e["capture"]).name, PLAY)
-        k = 1440 / src.width
-        paste(im, src, 240, 0, 1440)
-        box = lambda b, c, w: d.rectangle((240 + b[0] * k, b[1] * k, 240 + b[2] * k, b[3] * k), outline=c, width=w)
-        for b in e.get("boxes", {}).get("person", []):
-            if b != e.get("player"):
-                box(b, ACC, 3)
-        if e.get("player"):
-            box(e["player"], GRN, 6)
-            d.text((240 + e["player"][0] * k, e["player"][1] * k - 44), "player", font=font(34, FB), fill=GRN)
-        d.rectangle((0, 930, W, H), fill=BG)
-        args = " ".join(f"{v}" for k, v in e["args"].items() if k != "hold_ms")[:40]
-        d.text((60, 950), f"step {e['step']:>2}   {e['tool']} {args}", font=font(40, MONO), fill=ACC)
-        d.text((60, 1010), e["why"][:110], font=font(30), fill=FG)
-        d.text((1560, 950), f"{e['t'] // 60:.0f}:{e['t'] % 60:02.0f} / {end}", font=font(30, MONO), fill=DIM)
-        pics.append((im, 1))
-    return pics, ("Here it is playing on its own: eighteen minutes, sped up. The green box is the player, found by SAM and tracked by which box moves after a move key. Every line at the bottom is one real key press and the reason the model chose it. "
-                  "It skips the intro, talks to the village chief, and keeps trying keys when the character stops responding."), 16
+    """VM 에서 녹화한 실제 플레이 — 타이틀부터 인트로 대화까지. 자막은 그 수의 키와 Spark 가 댄 이유."""
+    return footage(REC / "godot", RUN, [(0, 136, 8)], "Real recording · Godot 4 game in a Windows VM · no human input"), (
+        "This is a real recording, sped up eight times. Nobody is touching the keyboard. "
+        "Every caption is one real key press and the reason Muse Spark chose it. "
+        "It starts a new game and reads the intro. When Enter stops advancing the dialogue, it writes that down as UX feedback and tries other keys."), 0
 
 
 def s2():
@@ -126,69 +157,58 @@ def s2():
 
 
 def s3():
-    boxes = json.loads((ROOT / "tools/demo/boxes013.json").read_text())
-    colors = {"person": GRN, "health bar": RED, "house door": ACC}
+    e = log()[14]  # 15수째: 사람 6·체력바 2, 플레이어 추적이 잡힌 첫 수
+    colors = {"person": GRN, "health bar": RED}
     out = []
     for draw_boxes in (False, True):
         im, d = card()
-        title(d, "SAM 3.1 segments the screen", "frame 13 of the real 60-step run")
-        src = frame("013.png")
+        title(d, "SAM 3.1 segments the screen", f"step {e['step']} of the recorded run")
+        src = frame(Path(e["capture"]).name)
         sd = ImageDraw.Draw(src)
         if draw_boxes:
-            for k, bs in boxes.items():
-                for x1, y1, x2, y2, c in bs:
-                    sd.rectangle((x1, y1, x2, y2), outline=colors.get(k, FG), width=4)
+            for k, bs in e["boxes"].items():
+                for b in bs:
+                    sd.rectangle(b, outline=ACC if b == e["player"] else colors.get(k, FG), width=6)
+            sd.text((e["player"][0] - 10, e["player"][1] - 34), "player", font=font(30, FB), fill=ACC)
         paste(im, src, 80, 190, 1100)
         if draw_boxes:
             y = 260
-            for k, bs in boxes.items():
-                d.text((1250, y), f"{len(bs)}  {k}", font=font(48, FB), fill=colors.get(k, DIM) if bs else DIM)
+            for k, bs in e["boxes"].items():
+                d.text((1250, y), f"{len(bs)}  {k}", font=font(48, FB), fill=colors.get(k, DIM))
                 y += 90
-            d.text((1250, y + 30), "→ \"detected: 6 person,", font=font(34, MONO), fill=FG)
-            d.text((1250, y + 80), "   2 health bar, 3 house door\"", font=font(34, MONO), fill=FG)
+            wrap(d, (1250, y + 30), f"\"{e['scene']}\"", font(32, MONO), FG, 600)
         out.append((im, 1 if not draw_boxes else 4))
-    return out, ("Meta's SAM 3.1 segments what is on screen. Here it finds six people, two health bars and three house doors. "
-                 "That becomes a short scene summary for the decision model."), 14
+    return out, ("Meta's SAM 3.1 segments what is on screen: six people and two health bars. "
+                 "The player is the box that moves after a move key. That becomes a short scene summary for the decision model."), 14
 
 
 def s4():
-    out = []
-    for e in log()[10:18]:
-        im, d = card()
-        title(d, "Muse Spark picks one tool call per step", "press · wait · report_bug · note · done")
-        paste(im, frame(Path(e["capture"]).name), 80, 190, 1080)
-        x = 1220
-        d.text((x, 200), f"step {e['step']}", font=font(64, FB), fill=FG)
-        d.text((x, 300), e["scene"], font=font(30, MONO), fill=DIM)
-        a = e["args"]
-        d.text((x, 370), f"{e['tool']}({a.get('key', '')}, {a.get('hold_ms', '')}ms)", font=font(44, MONO), fill=ACC)
-        d.text((x, 460), "why", font=font(30, FB), fill=DIM)
-        wrap(d, (x, 505), e["why"], font(36), FG, 620)
-        out.append((im, 1))
-    return out, ("Muse Spark reads the scene summary and the screenshot, and picks one tool call per step: "
-                 "press a key, wait, report a bug, or write a note. Every decision is logged with its reason. "
-                 "Here it walks toward the village chief to start the quest."), 17
+    """녹화 영상: 촌장에게 걸어가다 좌우 키가 먹지 않아 judge 가 same_screen 을 띄우는 구간."""
+    return footage(REC / "godot", RUN, [(140, 222, 5)], "Real recording · Muse Spark picks one tool call per step"), (
+        "Muse Spark reads the scene summary and the screenshot, and picks one tool call per step: "
+        "press a key, wait, report a bug, or write a note. Here it walks toward the village chief. "
+        "Then pressing right does nothing, and the judge flags it."), 0
 
 
 def s5():
     rows = re.findall(r"^\| (\w+) \| (바뀜|그대로) \|", BUG.read_text(encoding="utf-8"), re.M)
     im, d = card()
-    title(d, "Judge: the screen stopped changing", "step 18 → 19, still pressing left")
-    for i, n in enumerate(("018.png", "019.png")):
+    title(d, "Judge: the screen stopped changing", "steps 16 → 18, still pressing right")
+    for i, n in enumerate(("016.png", "018.png")):
         x = 80 + i * 900
         paste(im, frame(n), x, 210, 840)
         d.text((x, 860), f"step {int(n[:3])}", font=font(40, FB), fill=FG)
     d.rectangle((980, 210, 1820, 840), outline=RED, width=8)
-    d.text((1180, 860), "same_screen for 13 s", font=font(40, FB), fill=RED)
+    d.text((1180, 860), "same_screen for 22 s", font=font(40, FB), fill=RED)
     im2, d2 = card()
     title(d2, "Then it probes every key, one by one", "before/after capture for each key")
-    paste(im2, frame("019.png"), 80, 210, 900)
+    paste(im2, frame("018.png"), 80, 210, 900)
     for i, (k, r) in enumerate(rows):
         y = 230 + i * 80
         ok = r == "바뀜"
         d2.text((1100, y), f"{k:<6}", font=font(46, MONO), fill=FG)
         d2.text((1320, y), "screen changed" if ok else "no response", font=font(46), fill=GRN if ok else RED)
-    return [(im, 1), (im2, 1.2)], ("At step nineteen the hero stops moving while it keeps pressing left. "
+    return [(im, 1), (im2, 1.2)], ("From step sixteen to eighteen the hero does not move while it keeps pressing right. "
                                    "The judge flags the stuck screen, then probes each key one by one: "
                                    "up and down still work, left and right do nothing."), 14
 
@@ -197,16 +217,16 @@ def s6():
     t = BUG.read_text(encoding="utf-8")
     steps = re.findall(r"^\d+\. (.+)$", t, re.M)
     im, d = card()
-    title(d, "A bug report a human can reproduce", "bugs/0048-same-screen-at-step-19/report.md")
+    title(d, "A bug report a human can reproduce", str(BUG.relative_to(ROOT)))
     d.text((80, 200), "Reproduce", font=font(40, FB), fill=ACC)
     for i, s in enumerate(steps):
         d.text((80 + (i // 10) * 420, 270 + (i % 10) * 56), f"{i + 1:>2}. {s}", font=font(32, MONO), fill=FG)
-    x, y = 960, 14
+    x, y = 1000, 200
     for k, v, c in (
             ("Severity", "medium", FG),
             ("Expected", re.search(r"## 기대\n(.+)", t)[1], FG),
             ("Actual", re.search(r"## 실제\n(.+)", t)[1], FG),
-            ("Evidence", "frames 018, 019  +  per-key probe table (8 keys)", FG)):
+            ("Evidence", "frames 016, 018  +  per-key probe table (8 keys)", FG)):
         d.text((x, y), k, font=font(40, FB), fill=ACC)
         y = wrap(d, (x, y + 55), v, font(36), c, 880) + 30
     return [(im, 1)], ("It writes a report a human can reproduce: the exact key sequence, expected and actual behaviour, "
@@ -228,28 +248,15 @@ def s7():
 
 
 def s_snare():
-    """같은 에이전트, UE5 게임 — 실측 run 의 클릭을 빨간 점으로 얹어 넘긴다."""
-    pics = []
-    es = log(SNARE)
-    for e in es[:5] + es[7:8] + es[16:17] + es[18:19]:  # 타이틀→인트로→튜토리얼→들판 이동, 검은 덩어리 메모
-        im, d = card()
-        title(d, "Same agent, different engine: Unreal Engine 5", "Snarehaven · Win64 build in the VM · real mouse clicks")
-        src = frame(Path(e["capture"]).name, SNARE)
-        paste(im, src, 240, 190, 1440)
-        a = e["args"]
-        if e["tool"] == "click":
-            x, y = 240 + a["x"] * 1440, 190 + a["y"] * 810
-            d.ellipse((x - 26, y - 26, x + 26, y + 26), outline=RED, width=7)
-        args = f"({a['x']:.2f}, {a['y']:.2f})" if e["tool"] == "click" else f" {a.get('key', a.get('ms', ''))}"
-        d.text((60, 1010), f"step {e['step']:>2}  {e['tool']}{args}  —  {e['why'][:80]}", font=font(30, KO), fill=FG)
-        pics.append((im, 1))
-    return pics, ("Same agent, a different engine. Snarehaven is my Unreal Engine 5 game, packaged for Windows. "
-                  "No game-specific code: PlayTester reads the title screen, clicks Start, clears the intro and the tutorial, and walks into the world on its own."), 12
+    """같은 에이전트, UE5 게임 — VM 녹화본에 실제 클릭을 빨간 원으로."""
+    return footage(REC / "snare", SNARE, [(0, 140, 8)], "Real recording · Unreal Engine 5 (Snarehaven) Win64 build in the VM · real mouse clicks"), (
+        "Same agent, a different engine. Snarehaven is my Unreal Engine 5 game, packaged for Windows. "
+        "No game-specific code: PlayTester reads the title screen, clicks Start, clears the tutorial, and walks into the world on its own."), 0
 
 
 def s_snare_find():
     im, d = card()
-    title(d, "What it found in the Unreal build", "runs/20261101-091910 · bugs/0055, 0057 filed from the game log")
+    title(d, "What it found in the Unreal build", "runs/20261102-152538 step 19 · bugs/0059 from the game log · 0055 from an earlier run")
     src = frame("019.png", SNARE)
     sd = ImageDraw.Draw(src)
     for b in ((8, 8, 148, 60), (1046, 22, 1258, 61)):
@@ -262,7 +269,7 @@ def s_snare_find():
                        ("Intermittent startup crash", "Assertion failed: IsSet() — reported from the log, then PlayTester relaunches and keeps testing")):
         d.text((1100, y), head, font=font(38, FB), fill=ACC)
         y = wrap(d, (1100, y + 55), body, font(30), FG, 760) + 40
-    d.text((1100, y + 10), "VM note: black blobs are the virtual GPU dropping draws; Spark flagged them itself.", font=font(24), fill=DIM)
+    wrap(d, (1100, y + 10), "VM note: black blobs are the virtual GPU dropping draws; Spark flagged them itself.", font(24), DIM, 760)
     return [(im, 1)], ("In the Unreal build it found two indicators that disagree: connecting, and not connected, at the same time. "
                        "Reading the game log on its own, PlayTester filed eight sound packages missing from the packaged build, "
                        "and an intermittent startup crash that it reports and survives by relaunching the game."), 14
@@ -273,11 +280,15 @@ def s8():
     n = re.search(r"수: (\d+)", summ)[1]
     im, d = card()
     d.text((120, 120), "Godot 4  ·  Unreal Engine 5  ·  same agent", font=font(44), fill=GRN)
-    d.text((120, 220), f"{n} actions · unattended · ~$0.82 in API calls", font=font(64, FB), fill=FG)
+    m = log()[-1]["t"] / 60
+    d.text((120, 220), f"{n} actions · {m:.0f} minutes · unattended", font=font(64, FB), fill=FG)
     d.text((120, 340), "SAM 3.1 sees  ·  Muse Spark decides  ·  real keys  ·  reproducible reports", font=font(40), fill=DIM)
     d.text((120, 560), "github.com/soilrist/muse-playtester", font=font(60, FB), fill=ACC)
     d.text((120, 650), "Open source", font=font(40), fill=DIM)
-    return [(im, 1)], f"Two engines, one agent. {n} actions, about eighty cents. PlayTester is open source on GitHub.", 8
+    return [(im, 1)], f"Two engines, one agent, {n} actions with nobody at the keyboard. PlayTester is open source on GitHub.", 8
+
+
+SCENES = (s1, s_play, s2, s3, s4, s5, s6, s7, s_snare, s_snare_find, s8)
 
 
 def sh(*a):
@@ -294,26 +305,45 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         vlist, alist, total = [], [], 0.0
-        for si, scene in enumerate((s1, s_play, s2, s3, s4, s5, s6, s7, s_snare, s_snare_find, s8), 1):
+        enc = ["-vf", f"fps={FPS},format=yuv420p", "-c:v", "libx264", "-crf", "20", "-preset", "fast"]
+        for si, scene in enumerate(SCENES, 1):
             pics, text, planned = scene()
             aiff = tmp / f"s{si}.mp3"
             sh(str(Path(sys.executable).parent / "edge-tts"), "--voice", VOICE, "--text", text, "--write-media", str(aiff))
+            clip = isinstance(pics, tuple)  # (프레임 생성기, 수) — 녹화 영상
+            if clip:
+                planned = pics[1] / FPS
             length = max(planned, dur(aiff) + 1.5)  # 말이 끝나면 곧 다음 장면 — 빈 소리 구간을 안 만든다
             wav = tmp / f"s{si}.wav"
             sh("ffmpeg", "-y", "-i", str(aiff), "-af", f"adelay=400|400,apad", "-t", f"{length:.3f}", "-ar", "48000", "-ac", "2", str(wav))
             alist.append(f"file '{wav}'")
-            weight = sum(w for _, w in pics)
-            for pi, (im, w) in enumerate(pics):
-                png = tmp / f"s{si}-{pi}.png"
-                im.save(png)
-                vlist += [f"file '{png}'", f"duration {length * w / weight:.3f}"]
+            seg = tmp / f"s{si}.mp4"
+            if clip:  # 말이 영상보다 길면 마지막 장면을 붙잡아 둔다
+                p = subprocess.Popen(["ffmpeg", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
+                                      "-vf", f"tpad=stop_mode=clone:stop_duration={length:.3f},fps={FPS},format=yuv420p",
+                                      "-c:v", "libx264", "-crf", "20", "-preset", "fast", "-t", f"{length:.3f}", str(seg)],
+                                     stdin=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                for im in pics[0]:
+                    p.stdin.write(im.tobytes())
+                p.stdin.close()
+                assert p.wait() == 0, seg
+            else:
+                lst = []
+                weight = sum(w for _, w in pics)
+                for pi, (im, w) in enumerate(pics):
+                    png = tmp / f"s{si}-{pi}.png"
+                    im.save(png)
+                    lst += [f"file '{png}'", f"duration {length * w / weight:.3f}"]
+                lst.append(lst[-2])  # concat demuxer 는 마지막 그림의 duration 을 쓰려면 한 번 더 적어야 한다
+                (tmp / f"s{si}.txt").write_text("\n".join(lst))
+                sh("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(tmp / f"s{si}.txt"), *enc, "-t", f"{length:.3f}", str(seg))
+            vlist.append(f"file '{seg}'")
             total += length
-            print(f"scene {si}: {length:.1f}s")
-        vlist.append(vlist[-2])  # concat demuxer 는 마지막 그림의 duration 을 쓰려면 한 번 더 적어야 한다
+            print(f"scene {si} {scene.__name__}: {length:.1f}s")
         (tmp / "v.txt").write_text("\n".join(vlist))
         (tmp / "a.txt").write_text("\n".join(alist))
         sh("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(tmp / "v.txt"), "-f", "concat", "-safe", "0", "-i", str(tmp / "a.txt"),
-           "-vf", "fps=30,format=yuv420p", "-c:v", "libx264", "-crf", "20", "-c:a", "aac", "-b:a", "160k", "-shortest", str(OUT))
+           "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest", str(OUT))
         print(f"total {total:.1f}s → {OUT.relative_to(ROOT)}")
 
 

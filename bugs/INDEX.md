@@ -44,3 +44,5 @@
 | 0055 | [Crash: Assertion failed: IsSet()](0055-crash-assertion-failed-isset/report.md) | high | 20261101-091606 |
 | 0056 | [hp_bar_lost at step 16](0056-hp-bar-lost-at-step-16/report.md) | medium | 20261101-091910 |
 | 0057 | [8 packages missing from the build](0057-8-packages-missing-from-the-build/report.md) | medium | 20261101-091910 |
+| 0058 | [same_screen at step 18](0058-same-screen-at-step-18/report.md) | medium | 20261102-150749 |
+| 0059 | [8 packages missing from the build](0059-8-packages-missing-from-the-build/report.md) | medium | 20261102-152538 |
